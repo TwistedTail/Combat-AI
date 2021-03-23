@@ -5,7 +5,14 @@
 
 print("\n===========[ Loading Combat AI ]============\n|")
 
-if not CAI then CAI = {} end
+-- Creating global table and namespaces
+if not CAI then
+	CAI = {
+		Globals   = {},
+		Nodes     = { Objects = {}, },
+		Utilities = {},
+	}
+end
 
 if SERVER then
 	local Text        = "| > Loaded %s serverside file(s).\n| > Loaded %s shared file(s).\n| > Loaded %s clientside file(s)."
