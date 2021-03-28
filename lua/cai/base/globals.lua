@@ -13,5 +13,5 @@ Globals.MaxJump   = 20
 Globals.GridSize  = Vector(Globals.MaxWidth, Globals.MaxWidth, Globals.MaxHeight)
 
 -- Node settings
-Globals.GridsPerNode = Vector(10, 10, 1)
+Globals.GridsPerNode = Vector(25, 25, 1)
 Globals.NodeSize     = Globals.GridsPerNode * Globals.GridSize

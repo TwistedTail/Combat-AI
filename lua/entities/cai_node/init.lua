@@ -9,7 +9,8 @@ ENT.DoNotDuplicate    = true
 local Globals = CAI.Globals
 local Size    = Globals.NodeSize
 local Utils   = CAI.Utilities
-local Model   = "models/props_c17/furnituretoilet001a.mdl"
+local Nodes   = CAI.Nodes
+local Model   = "models/editor/ground_node.mdl"
 
 function CAI.CreateNode(Position)
 	local Node = ents.Create("cai_node")
@@ -22,15 +23,17 @@ function CAI.CreateNode(Position)
 	Node:SetModel(Model)
 	Node:PhysicsInit(SOLID_OBB)
 	Node:SetMoveType(MOVETYPE_NONE)
+	Node:SetSolidFlags(FSOLID_NOT_SOLID + FSOLID_TRIGGER)
 	Node:Spawn()
 
 	Node:SetTrigger(true)
 	Node:SetCollisionBounds(Size * -0.5, Size * 0.5)
 
-	Node.Coordinates = Coords
-	Node.Position    = Position
-	Node.Neighbours  = {}
-	Node.Grids       = {}
+	Node.Key      = Utils.VectorToKey(Coords)
+	Node.Coords   = Coords
+	Node.Pos      = Position
+	Node.Sides    = {}
+	Node.Subnodes = {}
 
 	return Node
 end
@@ -41,4 +44,8 @@ end
 
 function ENT:EndTouch(Entity)
 	print(self, "end touch", Entity)
+end
+
+function ENT:OnRemove()
+	Nodes.Remove(self.Coords)
 end
