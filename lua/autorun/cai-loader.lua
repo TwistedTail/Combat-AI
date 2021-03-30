@@ -10,6 +10,7 @@ if not CAI then
 	CAI = {
 		Globals   = {},
 		Nodes     = { Objects = {}, },
+		Subnodes  = {},
 		Utilities = {},
 	}
 end

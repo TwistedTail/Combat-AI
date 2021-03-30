@@ -7,9 +7,8 @@ ENT.Purpose      = "Reinvent the wheel"
 ENT.Instructions = "Create via CAI.Nodes.Create(), then set all the relevant fields."
 
 local Globals  = CAI.Globals
-local Size     = Globals.NodeSize
+local HalfSize = Globals.NodeSize * 0.495 -- Slightly smaller for display purposes
 local Nodes    = CAI.Nodes
-local HalfSize = Size * 0.495 -- Slightly smaller for display purposes
 local BoxAngle = Angle()
 local BoxColor = Color(255, 255, 0)
 

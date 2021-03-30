@@ -1,13 +1,14 @@
 -- Utility functions
-local Utils = CAI.Utilities
-local Key   = "%i %i %i"
+local Utils  = CAI.Utilities
+local format = string.format
+local Key    = "%i %i %i"
 
 function Utils.VectorToKey(Vector)
-	return Key:format(Vector:Unpack())
+	return format(Key, Vector:Unpack())
 end
 
 function Utils.AxisesToKey(X, Y, Z)
-	return Key:format(X, Y, Z)
+	return format(Key, X, Y, Z)
 end
 
 -- Thank you Garry
