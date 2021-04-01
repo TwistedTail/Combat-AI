@@ -7,7 +7,6 @@ local Size    = Globals.NodeSize
 local X, Y, Z = Size:Unpack()
 local Round   = math.Round
 local Utils   = CAI.Utilities
-local ToKey   = Utils.VectorToKey
 
 local function GetCoordinates(Pos)
 	return Vector(
@@ -46,14 +45,14 @@ end
 function Nodes.Find(Pos)
 	local Coords = GetCoordinates(Pos)
 
-	return Objects[ToKey(Coords)]
+	return Objects[Utils.VectorToKey(Coords)]
 end
 
 -- Only server can create and remove nodes
 if CLIENT then return end
 
 function Nodes.Create(Coords)
-	local Key = ToKey(Coords)
+	local Key = Utils.VectorToKey(Coords)
 
 	if IsValid(Objects[Key]) then return end
 
@@ -65,7 +64,7 @@ function Nodes.Create(Coords)
 end
 
 function Nodes.Remove(Coords)
-	local Key  = ToKey(Coords)
+	local Key  = Utils.VectorToKey(Coords)
 	local Node = Objects[Key]
 
 	if not Node then return end

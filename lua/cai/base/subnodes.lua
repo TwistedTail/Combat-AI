@@ -17,7 +17,6 @@ local TraceHull  = util.TraceHull
 local Globals    = CAI.Globals
 local Subnodes   = CAI.Subnodes
 local Utils      = CAI.Utilities
-local ToKey      = Utils.VectorToKey
 local SubSize    = Globals.SubnodeSize
 local MaxSlope   = Globals.MaxSlope
 local HalfWidth  = Globals.MaxWidth * 0.5
@@ -106,7 +105,7 @@ end
 
 function Subnodes.Create(Node, Coords)
 	local Nodes = Node.Subnodes
-	local Key   = ToKey(Coords)
+	local Key   = Utils.VectorToKey(Coords)
 
 	if Nodes[Key] then return end
 
@@ -129,7 +128,7 @@ end
 
 function Subnodes.Remove(Node, Coords)
 	local Nodes = Node.Subnodes
-	local Key   = ToKey(Coords)
+	local Key   = Utils.VectorToKey(Coords)
 
 	if not Nodes[Key] then return end
 
