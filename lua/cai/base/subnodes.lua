@@ -48,16 +48,20 @@ local function CheckGround(Node)
 	return Ground
 end
 
+-- TODO: Properly check where the bottom and surface of water bodies are
 local function CheckWater(Node, Ground)
-	local HitPos = Ground.HitPos
-
-	Trace.endpos = HitPos
+	Trace.endpos = Ground.HitPos
 	Trace.mask   = MASK_WATER
 
 	local Water = TraceHull(Trace)
 
 	-- Neither ground or water has been hit, this is in the air
 	if not (Ground.Hit or Water.Hit) then return end
+
+	Trace.mask = MASK_PLAYERSOLID_BRUSHONLY
+
+	local Bottom = TraceHull(Trace)
+	local HitPos = Bottom.HitPos
 
 	if Water.Hit then -- Let's get wet
 		local Depth = Water.HitPos.z - HitPos.z
@@ -71,6 +75,8 @@ local function CheckWater(Node, Ground)
 		Node.Water = true
 	end
 
+	Node.FeetPos = Node.Swim and Water.HitPos or Ground.HitPos
+
 	return true
 end
 
@@ -79,7 +85,6 @@ local function CheckRoof(Node, Ground)
 
 	Trace.start  = HitPos
 	Trace.endpos = HitPos - Ground.Normal * MaxHeight
-	Trace.mask   = MASK_PLAYERSOLID_BRUSHONLY
 
 	local Roof = TraceHull(Trace)
 
@@ -90,6 +95,8 @@ local function CheckRoof(Node, Ground)
 			Node.Crouch = true -- Bots will need to crouch here
 		end
 	end
+
+	return true
 end
 
 local function IsValidNode(Node)
@@ -97,8 +104,7 @@ local function IsValidNode(Node)
 
 	if not Ground then return end
 	if not CheckWater(Node, Ground) then return end
-
-	CheckRoof(Node, Ground) -- This one doesn't fail, should it?
+	if not CheckRoof(Node, Ground) then return end
 
 	return true
 end

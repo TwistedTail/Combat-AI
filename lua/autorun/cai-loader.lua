@@ -8,10 +8,11 @@ print("\n===========[ Loading Combat AI ]============\n|")
 -- Creating global table and namespaces
 if not CAI then
 	CAI = {
-		Globals   = {},
-		Nodes     = { Objects = {}, },
-		Subnodes  = {},
-		Utilities = {},
+		Globals    = {},
+		Networking = { Sender = {}, Receiver = {}, },
+		Nodes      = { Objects = {}, },
+		Subnodes   = {},
+		Utilities  = {},
 	}
 end
 

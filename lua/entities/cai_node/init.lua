@@ -7,10 +7,11 @@ ENT.DisableDuplicator = true
 ENT.DoNotDuplicate    = true
 
 local Globals  = CAI.Globals
-local Size     = Globals.NodeSize
-local Utils    = CAI.Utilities
+local Network  = CAI.Networking
 local Nodes    = CAI.Nodes
 local Subnodes = CAI.Subnodes
+local Utils    = CAI.Utilities
+local Size     = Globals.NodeSize
 local Model    = "models/props_junk/watermelon01.mdl" --"models/editor/ground_node.mdl"
 
 function CAI.CreateNode(Position)
@@ -77,7 +78,35 @@ do -- Subnode creation
 	end
 end
 
-
 function ENT:OnRemove()
 	Nodes.Remove(self.Coords)
 end
+
+Network.CreateSender("NodeInfo", function(Queue, Index, Node)
+	local Coords = {}
+	local Count  = 0
+
+	for _, Subnode in pairs(Node.Subnodes) do
+		Count = Count + 1
+
+		Coords[Count] = Subnode.Coords
+	end
+
+	Queue[Index] = {
+		Key      = Node.Key,
+		Coords   = Node.Coords,
+		Subnodes = Coords,
+	}
+end)
+
+Network.CreateReceiver("NodeInfo", function(Player, Message)
+	for Index in pairs(Message) do
+		local Node = Entity(Index)
+
+		if IsValid(Node) then
+			Network.Send("NodeInfo", Player, Index, Node)
+		end
+
+		Message[Index] = nil
+	end
+end)
