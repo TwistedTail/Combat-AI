@@ -32,7 +32,7 @@ local WalkTrace = {
 }
 
 local function CheckGround(Data, Traces)
-	local Position = Data.Pos
+	local Position = Data.Position
 
 	NodeTrace.start  = Position + HalfHeight
 	NodeTrace.endpos = Position - HalfHeight
@@ -80,7 +80,7 @@ local function CheckWater(Data, Traces)
 	NodeTrace.mask = MASK_WATER
 
 	local Water  = TraceHull(NodeTrace)
-	local Coords = Data.Coords
+	local Coords = Data.Coordinates
 	local Floor  = Traces.Floor.HitPos
 
 	if Water.Hit then
@@ -130,15 +130,15 @@ function Nodes.CheckSpot(Pos)
 	local Position = CNode.GetRoundedPos(Pos)
 
 	return PerformCheck({
-		Coords = Utils.DivideVector(Position, CNode.NodeSize),
-		Pos    = Position,
+		Coordinates = Utils.DivideVector(Position, CNode.NodeSize),
+		Position    = Position,
 	})
 end
 
 function Nodes.CheckCoordinates(Coords)
 	return PerformCheck({
-		Coords = Coords,
-		Pos    = Coords * CNode.NodeSize,
+		Coordinates = Coords,
+		Position    = Coords * CNode.NodeSize,
 	})
 end
 
