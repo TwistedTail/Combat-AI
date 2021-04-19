@@ -30,7 +30,32 @@ end)
 
 do -- Node generation
 	local Utils  = CAI.Utilities
+	local Sides  = {}
 	local Unused = {}
+
+	do -- Populating the sides table
+		local Entry = Vector()
+		local Zero  = Vector()
+		local Count = 0
+
+		for X = -1, 1 do
+			Entry.x = X
+
+			for Y = -1, 1 do
+				Entry.y = Y
+
+				for Z = -1, 1 do
+					Entry.z = Z
+
+					if Entry == Zero then continue end
+
+					Count = Count + 1
+
+					Sides[Count] = Vector(Entry) -- Pushing a copy
+				end
+			end
+		end
+	end
 
 	local function GetOrAddNode(Position)
 		if CNode.HasNode(Position) then
@@ -49,29 +74,23 @@ do -- Node generation
 	end
 
 	local function ExploreSides(Center, FootPos)
-		local SizeX, SizeY, SizeZ = CNode.NodeSize:Unpack()
-		local PosX, PosY, PosZ = Center:Unpack()
-		local Current = Vector()
+		local Size = CNode.NodeSize
 
-		for X = -1, 1 do
-			Current.x = PosX + SizeX * X
+		for I = #Sides, 1, -1 do
+			local Current = Center + Sides[I] * Size
 
-			for Y = -1, 1 do
-				Current.y = PosY + SizeY * Y
+			local Data, Key = GetOrAddNode(Current)
 
-				for Z = -1, 1 do
-					Current.z = PosZ + SizeZ * Z
+			if not Data then continue end
+			if not Nodes.CanConnect(FootPos, Data.FootPos) then
+				if Key then Unused[Key] = Data end
 
-					local Data, Key = GetOrAddNode(Current)
-
-					if not Data then continue end
-					if Data.Position == Center then continue end
-					if not Nodes.CanConnect(FootPos, Data.FootPos) then continue end
-					if Key then Unused[Key] = nil end
-
-					CNode.ConnectNodes(Center, Data.Position)
-				end
+				continue
 			end
+
+			CNode.ConnectNodes(Center, Data.Position)
+
+			if Key then Unused[Key] = nil end
 		end
 	end
 
