@@ -81,13 +81,14 @@ do -- Node generation
 		if not Player:IsSuperAdmin() then return end
 
 		local Position  = Player:GetEyeTrace().HitPos
+		local Current   = CNode.GetNodeCount()
 		local Data, Key = GetOrAddNode(Position)
 
-		if not Data then print("Couldn't generate grid from ", Position) end
+		if not Data then return print("Couldn't generate grid on ", Position) end
 		if Key then Unused[Key] = nil end
 
 		ExploreSides(Data.Position, Data.FootPos)
 
-		print("Generated " .. CNode.GetNodeCount() .. " nodes.")
+		print("Generated " .. (CNode.GetNodeCount() - Current) .. " new nodes.")
 	end)
 end
