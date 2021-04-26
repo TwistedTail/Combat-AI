@@ -1,5 +1,8 @@
+local IsInWorld    = util.IsInWorld
 local TraceHull    = util.TraceHull
 local HookRun      = hook.Run
+local CAI          = CAI
+local CNode        = CNode
 local Globals      = CAI.Globals
 local Nodes        = CAI.Nodes
 local Utils        = CAI.Utilities
@@ -33,6 +36,8 @@ local WalkTrace = {
 
 local function CheckGround(Data, Traces)
 	local Position = Data.Position
+
+	if not IsInWorld(Position) then return end
 
 	NodeTrace.start  = Position + HalfHeight
 	NodeTrace.endpos = Position - HalfHeight

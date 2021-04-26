@@ -1,8 +1,9 @@
 local CAI   = CAI
+local CNode = CNode
 local Nodes = CAI.Nodes
+local print = print
 
 concommand.Add("cai_node", function(Player)
-	if not CNode then return end
 	if not IsValid(Player) then return end
 	if not Player:IsSuperAdmin() then return end
 
@@ -10,33 +11,38 @@ concommand.Add("cai_node", function(Player)
 
 	if CNode.HasNode(Position) then return end
 
-	local Data = Nodes.CheckSpot(Position)
+	local Node = Nodes.CheckSpot(Position)
 
-	if not Data then return end
+	if not Node then return end
 
-	CNode.AddNode(Position, Data.FootPos)
+	CNode.AddNode(Position, Node.FootPos)
 
-	print("Created new node at ", Data.Position)
+	print("Created new node at ", Node.Position)
 end)
 
 concommand.Add("cai_clear", function(Player)
-	if not CNode then return end
 	if IsValid(Player) and not Player:IsSuperAdmin() then return end
 
-	local Count = CNode.RemoveAllNodes()
+	local Count = CNode.ClearNodes()
 
 	print("Removed " .. Count .. " nodes.")
 end)
 
 do -- Node generation
-	local Utils  = CAI.Utilities
-	local Sides  = {}
-	local Unused = {}
+	local Utils   = CAI.Utilities
+	local Result  = "%s node generation after %s seconds (%s iterations).\nPurged %s unused nodes.\nGenerated %s walkable nodes."
+	local Sides   = {}
+	local Found   = {}
+	local List    = {}
+	local MaxStep = 60
+	local Count   = 0
+	local Iter    = 0
+	local Active, Start
 
 	do -- Populating the sides table
 		local Entry = Vector()
 		local Zero  = Vector()
-		local Count = 0
+		local Index = 0
 
 		for X = -1, 1 do
 			Entry.x = X
@@ -49,9 +55,9 @@ do -- Node generation
 
 					if Entry == Zero then continue end
 
-					Count = Count + 1
+					Index = Index + 1
 
-					Sides[Count] = Vector(Entry) -- Pushing a copy
+					Sides[Index] = Vector(Entry) -- Pushing a copy
 				end
 			end
 		end
@@ -64,50 +70,105 @@ do -- Node generation
 
 		local Coords = CNode.GetCoordinates(Position)
 		local Key    = Utils.VectorToKey(Coords)
-		local Data   = Unused[Key] or Nodes.CheckCoordinates(Coords)
+		local Node   = Nodes.CheckCoordinates(Coords)
 
-		if not Data then return end
+		if not Node then return end
+		if not CNode.AddNode(Position, Node.FootPos) then return end
 
-		CNode.AddNode(Position, Data.FootPos)
-
-		return Data, Key
+		return Node, Key
 	end
 
 	local function ExploreSides(Center, FootPos)
-		local Size = CNode.NodeSize
+		local Added = {}
+		local Size  = CNode.NodeSize
 
 		for I = #Sides, 1, -1 do
-			local Current = Center + Sides[I] * Size
+			local Current   = Center + Sides[I] * Size
+			local Node, Key = GetOrAddNode(Current)
 
-			local Data, Key = GetOrAddNode(Current)
+			if not Node then continue end
+			if not Nodes.CanConnect(FootPos, Node.FootPos) then continue end
 
-			if not Data then continue end
-			if not Nodes.CanConnect(FootPos, Data.FootPos) then
-				if Key then Unused[Key] = Data end
+			CNode.ConnectTo(Center, Node.Position)
 
-				continue
+			if Key then
+				Added[Key] = Node
 			end
+		end
 
-			CNode.ConnectNodes(Center, Data.Position)
+		return Added
+	end
 
-			if Key then Unused[Key] = nil end
+	local function Search()
+		for _ = 1, math.min(Count, MaxStep) do
+			local Key  = table.remove(List)
+			local Node = Found[Key]
+
+			Count = Count - 1
+
+			Found[Key] = nil
+
+			local Added = ExploreSides(Node.Position, Node.FootPos)
+
+			for K, V in pairs(Added) do
+				Count = Count + 1
+
+				List[Count] = K
+				Found[K]    = V
+			end
+		end
+
+		if Count == 0 then
+			hook.Remove("Tick", "CAI NodeGen")
+
+			print(Result:format("Finished", SysTime() - Start, Iter, CNode.PurgeUnused(), CNode.GetNodeCount()))
+
+			Active = nil
+			Iter   = 0
+		else
+			Iter = Iter + 1
 		end
 	end
 
-	concommand.Add("cai_gen", function(Player)
-		if not CNode then return end
+	concommand.Add("cai_begin", function(Player)
 		if not IsValid(Player) then return end
 		if not Player:IsSuperAdmin() then return end
+		if Active then return print("Already generating") end
 
 		local Position  = Player:GetEyeTrace().HitPos
-		local Current   = CNode.GetNodeCount()
-		local Data, Key = GetOrAddNode(Position)
+		local Node, Key = GetOrAddNode(Position)
 
-		if not Data then return print("Couldn't generate grid on ", Position) end
-		if Key then Unused[Key] = nil end
+		if not Node then return print("Couldn't generate grid on ", Position) end
+		if not Key then return print("Don't forget to clear the grid before generating a new one") end
 
-		ExploreSides(Data.Position, Data.FootPos)
+		Active = true
+		Start  = SysTime()
+		Count  = Count + 1
 
-		print("Generated " .. (CNode.GetNodeCount() - Current) .. " new nodes.")
+		List[Count] = Key
+		Found[Key] = Node
+
+		hook.Add("Tick", "CAI NodeGen", Search)
+	end)
+
+	concommand.Add("cai_stop", function(Player)
+		if IsValid(Player) and not Player:IsSuperAdmin() then return end
+		if not Active then return print("No generation is running") end
+
+		print(Result:format("Cancelled", SysTime() - Start, Iter, CNode.PurgeUnused(), CNode.GetNodeCount()))
+
+		Active = nil
+		Start  = nil
+		Count  = 0
+		Iter   = 0
+
+		for I = #List, 1, -1 do
+			local K = List[I]
+
+			Found[K] = nil
+			List[I]  = nil
+		end
+
+		hook.Remove("Tick", "CAI NodeGen")
 	end)
 end

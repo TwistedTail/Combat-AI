@@ -91,13 +91,3 @@ else
 end
 
 print("|\n=======[ Finished Loading Combat AI ]=======\n")
-
-hook.Add("Initialize", "CombatNode loading", function()
-	if dotnet then
-		dotnet.load("CombatNode")
-	else
-		print("ERROR: GmodDotNet is not installed")
-	end
-
-	hook.Remove("Initialize", "CombatNode loading")
-end)
