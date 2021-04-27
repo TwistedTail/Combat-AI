@@ -11,6 +11,7 @@ local HalfWidth    = Globals.MaxWidth * 0.5
 local MaxHeight    = Globals.MaxHeight
 local MaxCrouch    = Globals.MaxCrouch
 local MaxJump      = Globals.MaxJump
+local Grid         = CNode.GetGrid("human")
 local HalfHeight   = Vector(0, 0, MaxHeight * 0.5)
 local UpNormal     = Vector(0, 0, 1)
 local WalkSize     = Vector(HalfWidth, HalfWidth, MaxHeight - MaxJump)
@@ -93,13 +94,13 @@ local function CheckWater(Data, Traces)
 		local Depth    = WaterPos.z - Floor.z
 
 		if Depth > MaxCrouch then
-			if Coords ~= CNode.GetCoordinates(WaterPos) then return end
+			if Coords ~= CNode.GetCoordinates(Grid.Name, WaterPos) then return end
 
 			Data.FootPos = WaterPos
 			Data.Swim    = true
 			Data.Crouch  = nil
 		else
-			if Coords ~= CNode.GetCoordinates(Floor) then return end
+			if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
 
 			if Data.Crouch and Depth > MaxJump then
 				Data.Crouch = nil
@@ -109,7 +110,7 @@ local function CheckWater(Data, Traces)
 			Data.Depth   = Depth
 		end
 	else
-		if Coords ~= CNode.GetCoordinates(Floor) then return end
+		if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
 
 		Data.FootPos = Floor
 	end
@@ -132,10 +133,10 @@ local function PerformCheck(Data)
 end
 
 function Nodes.CheckSpot(Pos)
-	local Position = CNode.GetRoundedPos(Pos)
+	local Position = CNode.GetRoundedPos(Grid.Name, Pos)
 
 	return PerformCheck({
-		Coordinates = Utils.DivideVector(Position, CNode.NodeSize),
+		Coordinates = Utils.DivideVector(Position, Grid.NodeSize),
 		Position    = Position,
 	})
 end
@@ -143,7 +144,7 @@ end
 function Nodes.CheckCoordinates(Coords)
 	return PerformCheck({
 		Coordinates = Coords,
-		Position    = Coords * CNode.NodeSize,
+		Position    = Coords * Grid.NodeSize,
 	})
 end
 

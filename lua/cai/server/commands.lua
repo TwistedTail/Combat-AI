@@ -1,6 +1,7 @@
 local CAI   = CAI
 local CNode = CNode
 local Nodes = CAI.Nodes
+local Grid  = CNode.GetGrid("human")
 local print = print
 
 concommand.Add("cai_node", function(Player)
@@ -9,13 +10,13 @@ concommand.Add("cai_node", function(Player)
 
 	local Position = Player:GetEyeTrace().HitPos
 
-	if CNode.HasNode(Position) then return end
+	if CNode.HasNode(Grid.Name, Position) then return end
 
 	local Node = Nodes.CheckSpot(Position)
 
 	if not Node then return end
 
-	CNode.AddNode(Position, Node.FootPos)
+	CNode.AddNode(Grid.Name, Position, Node.FootPos)
 
 	print("Created new node at ", Node.Position)
 end)
@@ -23,7 +24,7 @@ end)
 concommand.Add("cai_clear", function(Player)
 	if IsValid(Player) and not Player:IsSuperAdmin() then return end
 
-	local Count = CNode.ClearNodes()
+	local Count = CNode.ClearNodes(Grid.Name)
 
 	print("Removed " .. Count .. " nodes.")
 end)
@@ -64,23 +65,23 @@ do -- Node generation
 	end
 
 	local function GetOrAddNode(Position)
-		if CNode.HasNode(Position) then
-			return CNode.GetNode(Position)
+		if CNode.HasNode(Grid.Name, Position) then
+			return CNode.GetNode(Grid.Name, Position)
 		end
 
-		local Coords = CNode.GetCoordinates(Position)
+		local Coords = CNode.GetCoordinates(Grid.Name, Position)
 		local Key    = Utils.VectorToKey(Coords)
 		local Node   = Nodes.CheckCoordinates(Coords)
 
 		if not Node then return end
-		if not CNode.AddNode(Position, Node.FootPos) then return end
+		if not CNode.AddNode(Grid.Name, Position, Node.FootPos) then return end
 
 		return Node, Key
 	end
 
 	local function ExploreSides(Center, FootPos)
 		local Added = {}
-		local Size  = CNode.NodeSize
+		local Size  = Grid.NodeSize
 
 		for I = #Sides, 1, -1 do
 			local Current   = Center + Sides[I] * Size
@@ -89,7 +90,7 @@ do -- Node generation
 			if not Node then continue end
 			if not Nodes.CanConnect(FootPos, Node.FootPos) then continue end
 
-			CNode.ConnectTo(Center, Node.Position)
+			CNode.ConnectTo(Grid.Name, Center, Node.Position)
 
 			if Key then
 				Added[Key] = Node
@@ -121,7 +122,7 @@ do -- Node generation
 		if Count == 0 then
 			hook.Remove("Tick", "CAI NodeGen")
 
-			print(Result:format("Finished", SysTime() - Start, Iter, CNode.PurgeUnused(), CNode.GetNodeCount()))
+			print(Result:format("Finished", SysTime() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
 
 			Active = nil
 			Iter   = 0
@@ -155,7 +156,7 @@ do -- Node generation
 		if IsValid(Player) and not Player:IsSuperAdmin() then return end
 		if not Active then return print("No generation is running") end
 
-		print(Result:format("Cancelled", SysTime() - Start, Iter, CNode.PurgeUnused(), CNode.GetNodeCount()))
+		print(Result:format("Cancelled", SysTime() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
 
 		Active = nil
 		Start  = nil
