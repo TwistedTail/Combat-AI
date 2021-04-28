@@ -3,7 +3,8 @@ local Globals = CAI.Globals
 
 -- File paths
 Globals.BasePath = "combat-ai/"
-Globals.NodePath = Globals.BasePath .. "maps/"
+Globals.MapPath  = Globals.BasePath .. "%s/"
+Globals.FilePath = Globals.MapPath .. "/%s.json"
 
 -- Node settings
 Globals.MaxHeight = 75

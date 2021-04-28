@@ -173,3 +173,45 @@ do -- Node generation
 		hook.Remove("Tick", "CAI NodeGen")
 	end)
 end
+
+do -- Node saving and loading
+	local Globals  = CAI.Globals
+	local MapPath  = Globals.MapPath
+	local FilePath = Globals.FilePath
+
+	concommand.Add("cai_save", function(Player)
+		if IsValid(Player) and not Player:IsSuperAdmin() then return end
+
+		local JSON = CNode.SerializeGrid(Grid.Name)
+
+		if not JSON then return print("Grid hasn't been created") end
+
+		local Map    = game.GetMap()
+		local Folder = MapPath:format(Map)
+		local File   = FilePath:format(Map, Grid.Name)
+
+		if not file.Exists(Folder, "DATA") then
+			file.CreateDir(Folder)
+		end
+
+		file.Write(File, JSON)
+
+		print("Grid saved successfully!")
+	end)
+
+	concommand.Add("cai_load", function(Player)
+		if IsValid(Player) and not Player:IsSuperAdmin() then return end
+
+		local Map  = game.GetMap()
+		local File = FilePath:format(Map, Grid.Name)
+
+		if not file.Exists(File, "DATA") then
+			return print("There's no grid saves for this map.")
+		end
+
+		local JSON   = file.Read(File, "DATA")
+		local Result = CNode.DeserializeGrid(JSON)
+
+		print(Result and "Success!" or "Couldn't load grid.")
+	end)
+end
