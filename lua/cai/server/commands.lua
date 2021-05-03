@@ -197,6 +197,10 @@ do -- Node saving and loading
 		file.Write(File, JSON)
 
 		print("Grid saved successfully!")
+
+		JSON = nil
+
+		collectgarbage()
 	end)
 
 	concommand.Add("cai_load", function(Player)
@@ -213,5 +217,9 @@ do -- Node saving and loading
 		local Result = CNode.DeserializeGrid(JSON)
 
 		print(Result and "Success!" or "Couldn't load grid.")
+
+		JSON = nil
+
+		collectgarbage()
 	end)
 end
