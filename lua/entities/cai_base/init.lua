@@ -11,8 +11,7 @@ local Utils   = CAI.Utilities
 local Globals = CAI.Globals
 local Tick    = 0.105 -- Nextbot tickrate, can it be changed?
 
-ENT.EyesName     = "eyes" -- Name of the eyes attachment
-ENT.GridName     = "human"
+ENT.GridName     = "human" -- Name of the grid used by the bot
 ENT.MaxHealth    = 100
 ENT.MaxViewRange = 10000
 ENT.FieldOfView  = 120
@@ -39,19 +38,11 @@ function ENT:Initialize()
 	self.Targets   = {}
 	self.MaxSpeed  = self.RunSpeed
 	self.Accel     = self.RunAccel
-	self.EyesIndex = self:LookupAttachment(self.EyesName)
-
-	-- Model has no eyes attachment
-	if self.EyesIndex < 1 then
-		self.GetShootPos = self.EyePos
-		self.EyesIndex   = nil
-	end
+	self.EyesIndex = self:LookupAttachment("eyes")
 end
 
 function ENT:GetShootPos()
-	local Data = self:GetAttachment(self.EyesIndex)
-
-	return Data.Pos
+	return Vector(self.ShootPos) -- Return a copy of it
 end
 
 do -- Get/Set Target
@@ -102,6 +93,60 @@ do -- Waypoint functions
 		Points[#Points + 1] = Position
 
 		return true
+	end
+end
+
+do -- Aim pose functions. NOTE: These seem to require a specific sequence/activity to work.
+	function ENT:UpdateAimPose()
+		if not self.AimPos then return end
+
+		local Direction = (self.AimPos - self.ShootPos):GetNormalized()
+		local ViewAng   = self:WorldToLocalAngles(Direction:Angle())
+
+		ViewAng:Normalize()
+
+		self:SetPoseParameter("aim_pitch", ViewAng.p)
+		self:SetPoseParameter("aim_yaw", ViewAng.y)
+	end
+
+	function ENT:AimToPos(Position)
+		if not isvector(Position) then return end
+
+		self.AimPos = Position
+	end
+
+	function ENT:StopAiming()
+		self.AimPos = nil
+
+		self:SetPoseParameter("aim_pitch", 0)
+		self:SetPoseParameter("aim_yaw", 0)
+	end
+end
+
+do -- Head pose functions
+	function ENT:UpdateHeadPose()
+		if not self.LookPos then return end
+
+		local Direction = (self.LookPos - self.ShootPos):GetNormalized()
+		local LookAng   = self:WorldToLocalAngles(Direction:Angle())
+
+		LookAng:Normalize()
+
+		self:SetPoseParameter("head_pitch", LookAng.p)
+		self:SetPoseParameter("head_yaw", LookAng.y)
+	end
+
+	function ENT:LookAtPos(Position)
+		if not isvector(Position) then return end
+
+		self.LookPos = Position
+	end
+
+	function ENT:StopLooking()
+		self.LookPos = nil
+
+		self:SetPoseParameter("head_pitch", 0)
+		self:SetPoseParameter("head_yaw", 0)
 	end
 end
 
@@ -204,13 +249,23 @@ do -- NextBot hooks
 	end
 
 	function ENT:Think()
-		if self.OnFire and not self:IsOnFire() then
-			self.OnFire = nil
-
-			self:OnExtinguished()
-		end
+		local Eyes = self:GetAttachment(self.EyesIndex)
 
 		self.Position = self:GetPos()
+		self.ShootPos = Eyes.Pos
+
+		if self.OnFire then
+			if self:IsOnFire() then
+				self:OnBurned()
+			else
+				self.OnFire = nil
+
+				self:OnExtinguished()
+			end
+		end
+
+		self:UpdateHeadPose()
+		self:UpdateAimPose()
 	end
 
 	function ENT:OnIgnite()
@@ -219,6 +274,10 @@ do -- NextBot hooks
 		self.OnFire = true
 
 		print(self, "OnIgnite")
+	end
+
+	function ENT:OnBurned()
+		print(self, "OnBurned")
 	end
 
 	function ENT:OnExtinguished()
