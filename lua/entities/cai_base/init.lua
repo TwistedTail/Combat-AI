@@ -41,10 +41,6 @@ function ENT:Initialize()
 	self.EyesIndex = self:LookupAttachment("eyes")
 end
 
-function ENT:GetShootPos()
-	return Vector(self.ShootPos) -- Return a copy of it
-end
-
 do -- Get/Set Target
 	function ENT:SetTarget(Entity)
 		if not IsValid(Entity) then return false end
