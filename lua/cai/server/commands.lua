@@ -122,7 +122,7 @@ do -- Node generation
 		if Count == 0 then
 			hook.Remove("Tick", "CAI NodeGen")
 
-			print(Result:format("Finished", SysTime() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
+			print(Result:format("Finished", os.time() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
 
 			Active = nil
 			Iter   = 0
@@ -143,7 +143,7 @@ do -- Node generation
 		if not Key then return print("Don't forget to clear the grid before generating a new one") end
 
 		Active = true
-		Start  = SysTime()
+		Start  = os.time()
 		Count  = Count + 1
 
 		List[Count] = Key
@@ -156,7 +156,7 @@ do -- Node generation
 		if IsValid(Player) and not Player:IsSuperAdmin() then return end
 		if not Active then return print("No generation is running") end
 
-		print(Result:format("Cancelled", SysTime() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
+		print(Result:format("Cancelled", os.time() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
 
 		Active = nil
 		Start  = nil
