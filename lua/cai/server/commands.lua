@@ -221,6 +221,23 @@ do -- Node saving and loading
 
 		JSON = nil
 
-		collectgarbage()
+		collectgarbage("collect")
+	end)
+end
+
+do -- Pathfinding test
+	local Bots = CAI.Bots
+
+	concommand.Add("cai_path", function(Player)
+		if not IsValid(Player) then return end
+		if not Player:IsSuperAdmin() then return end
+
+		if not next(Bots) then return print("No bots") end
+
+		local Target = Player:GetEyeTrace().HitPos
+
+		for Bot in pairs(Bots) do
+			CNode.QueuePath("human", Bot.UID, Bot.Position, Target)
+		end
 	end)
 end

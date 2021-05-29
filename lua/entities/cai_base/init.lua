@@ -7,6 +7,7 @@ include("shared.lua")
 
 local util    = util
 local CNode   = CNode
+local Bots    = CAI.Bots
 local Utils   = CAI.Utilities
 local Globals = CAI.Globals
 local Tick    = 0.105 -- Nextbot tickrate, can it be changed?
@@ -39,6 +40,12 @@ function ENT:Initialize()
 	self.MaxSpeed  = self.RunSpeed
 	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
+
+	Bots[self] = true
+end
+
+function ENT:OnRemove()
+	Bots[self] = nil
 end
 
 do -- Get/Set Target
@@ -89,6 +96,14 @@ do -- Waypoint functions
 		Points[#Points + 1] = Position
 
 		return true
+	end
+end
+
+do -- Path functions
+	function ENT:PushPath(Path)
+		for I = 1, #Path do
+			self:PushWaypoint(Path[I])
+		end
 	end
 end
 
