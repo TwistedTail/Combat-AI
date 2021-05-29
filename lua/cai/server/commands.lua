@@ -35,7 +35,7 @@ do -- Node generation
 	local Sides   = {}
 	local Found   = {}
 	local List    = {}
-	local MaxStep = 60
+	local MaxStep = 66
 	local Count   = 0
 	local Iter    = 0
 	local Active, Start
@@ -79,18 +79,19 @@ do -- Node generation
 		return Node, Key
 	end
 
-	local function ExploreSides(Center, FootPos)
+	local function ExploreSides(Coordinates, FootPos)
 		local Added = {}
 		local Size  = Grid.NodeSize
 
 		for I = #Sides, 1, -1 do
-			local Current   = Center + Sides[I] * Size
+			local Current   = (Coordinates + Sides[I]) * Size
 			local Node, Key = GetOrAddNode(Current)
 
 			if not Node then continue end
-			if not Nodes.CanConnect(FootPos, Node.FootPos) then continue end
 
-			CNode.ConnectTo(Grid.Name, Center, Node.Position)
+			if Nodes.CanConnect(FootPos, Node.FootPos) then
+				CNode.ConnectTo(Grid.Name, FootPos, Node.FootPos)
+			end
 
 			if Key then
 				Added[Key] = Node
@@ -109,7 +110,7 @@ do -- Node generation
 
 			Found[Key] = nil
 
-			local Added = ExploreSides(Node.Position, Node.FootPos)
+			local Added = ExploreSides(Node.Coordinates, Node.FootPos)
 
 			for K, V in pairs(Added) do
 				Count = Count + 1
