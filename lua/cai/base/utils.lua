@@ -2,7 +2,7 @@
 local Utils  = CAI.Utilities
 local format = string.format
 local Key    = "%i %i %i"
-local UID    = "%s-%s"
+local UID    = "%s-%i"
 
 function Utils.VectorToKey(Vector)
 	return format(Key, Vector:Unpack())

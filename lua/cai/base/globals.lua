@@ -13,6 +13,9 @@ Globals.MaxWidth  = 35
 Globals.MaxJump   = 20
 Globals.MaxSlope  = math.cos(math.rad(45)) -- Can't climb slopes steeper than 45°
 
+-- Squad settings
+Globals.SquadSize = 10
+
 if CLIENT then return end
 
 CAI.Bots = CAI.Bots or {} -- Temp

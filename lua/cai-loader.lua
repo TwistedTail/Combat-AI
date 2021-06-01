@@ -11,6 +11,7 @@ if not CAI then
 		Globals    = {},
 		Networking = { Sender = {}, Receiver = {}, },
 		Nodes      = {},
+		Squadrons  = { Objects = {} },
 		Utilities  = {},
 	}
 end

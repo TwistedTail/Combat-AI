@@ -41,11 +41,48 @@ function ENT:Initialize()
 	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
 
+	self:JoinOrCreateSquad()
+
 	Bots[self] = true
 end
 
 function ENT:OnRemove()
+	self:LeaveSquad()
+
 	Bots[self] = nil
+end
+
+do -- Squadron functions and hooks
+	local Squads = CAI.Squadrons
+
+	function ENT:JoinOrCreateSquad()
+		if self.Squadron then return end
+
+		local Objects = Squads.GetAll()
+
+		for Squad in pairs(Objects) do
+			if Squad:AddMember(self) then return end
+		end
+
+		local Name = Utils.GetUID(self.GridName)
+		local New = Squads.Create(Name)
+
+		New:AddMember(self)
+	end
+
+	function ENT:LeaveSquad()
+		if not self.Squadron then return end
+
+		self.Squadron:RemoveMember(self)
+	end
+
+	function ENT:OnJoinedSquad(Squad)
+		self.Squadron = Squad
+	end
+
+	function ENT:OnLeftSquad()
+		self.Squadron = nil
+	end
 end
 
 do -- Get/Set Target
@@ -317,6 +354,8 @@ do -- NextBot hooks
 
 	function ENT:OnKilled(DamageInfo)
 		hook.Run("OnNPCKilled", self, DamageInfo:GetAttacker(), DamageInfo:GetInflictor())
+
+		self:LeaveSquad()
 
 		if self.OnFire then
 			self:SetModel("models/player/charple.mdl")
