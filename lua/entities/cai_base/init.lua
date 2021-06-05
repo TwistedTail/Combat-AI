@@ -20,8 +20,8 @@ ENT.WalkSpeed    = 200 -- Temp
 ENT.WalkAccel    = 400 -- Temp
 ENT.RunSpeed     = 400 -- Temp
 ENT.RunAccel     = 800 -- Temp
-ENT.SwimSpeed    = 100 -- Temp
-ENT.SwimAccel    = 200 -- Temp
+ENT.IdleAnim     = "idle_subtle"
+ENT.RunAnim      = "run_all"
 
 function ENT:Initialize()
 	self:SetModel("models/humans/group03/male_09.mdl")
@@ -54,9 +54,7 @@ do -- Squadron functions and hooks
 	function ENT:JoinOrCreateSquad()
 		if self.Squadron then return end
 
-		local Objects = Squads.GetAll()
-
-		for Squad in pairs(Objects) do
+		for Squad in pairs(Squads.GetAll()) do
 			if Squad:AddMember(self) then return end
 		end
 
@@ -249,7 +247,7 @@ do -- Movement functions
 	function ENT:HasDestiny()
 		if self.Destiny then return true end
 		if not next(self.Waypoints) then
-			self:StartActivity(ACT_IDLE)
+			self:SetSequence(self.IdleAnim)
 
 			return false
 		end
@@ -257,7 +255,8 @@ do -- Movement functions
 		self.Destiny = self:ShiftWaypoint()
 
 		if self.Destiny then
-			self:StartActivity(ACT_RUN)
+			self:SetSequence(self.RunAnim)
+			self:ResetSequenceInfo()
 		end
 
 		return true
@@ -287,7 +286,7 @@ end
 
 do -- NextBot hooks
 	function ENT:RunBehaviour()
-		self:StartActivity(ACT_IDLE)
+		self:SetSequence(self.IdleAnim)
 
 		while true do
 			self.MaxMove = self.MaxSpeed * Tick
