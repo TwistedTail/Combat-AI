@@ -263,23 +263,15 @@ do -- Movement functions
 		return true
 	end
 
-	function ENT:IsOnDestiny(Position)
-		if self.Position ~= Position then return false end
-
-		self.Destiny = self:ShiftWaypoint()
-
-		return true
-	end
-
 	function ENT:MoveToDestiny()
 		if self.Halted then return end
 		if not self:HasDestiny() then return end
 
 		while self.Destiny and self.MaxMove > 0 do
-			local NewPos = self:MoveTowards(self.Destiny)
+			local Position = self:MoveTowards(self.Destiny)
 
-			if not self:IsOnDestiny(NewPos) then
-				self.Position = NewPos
+			if Position == self.Destiny or Position == self.Position then
+				self.Destiny = self:ShiftWaypoint()
 
 				if not self.Destiny then
 					print("Arrived")
@@ -287,6 +279,8 @@ do -- Movement functions
 					print("Moved to next waypoint")
 				end
 			end
+
+			self.Position = Position
 		end
 	end
 end
