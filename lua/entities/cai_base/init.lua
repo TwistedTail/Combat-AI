@@ -34,6 +34,7 @@ function ENT:Initialize()
 
 	self.Grid      = CNode.GetGrid(self.GridName)
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
+	self.Filter    = { self }
 	self.Waypoints = {}
 	self.Targets   = {}
 	self.MaxSpeed  = self.RunSpeed
@@ -205,37 +206,39 @@ end
 
 do -- Movement functions
 	local Trace = { start = true, endpos = true, mins = true, maxs = true, filter = true }
+	local Down  = Vector(0, 0, -55000)
 
 	function ENT:GetGroundPos(Position)
 		Trace.start  = Position
-		Trace.endpos = Position - Vector(0, 0, 55000)
-		Trace.filter = { self }
+		Trace.endpos = Position + Down
+		Trace.filter = self.Filter
 
 		return util.TraceLine(Trace).HitPos
 	end
 
-	function ENT:GetMovePos(Desired)
+	function ENT:CalculateMove(Desired)
 		local Min, Max = self:OBBMins(), self:OBBMaxs()
+		local Start    = self.Position + self.JumpOffset
+
+		Trace.start  = Start
+		Trace.endpos = Start + Desired
+		Trace.filter = self.Filter
+		Trace.mins   = Min
+		Trace.maxs   = Max
 
 		Min.z = 0
 		Max.z = 0
 
-		Trace.start  = self.Position + self.JumpOffset
-		Trace.endpos = Desired + self.JumpOffset
-		Trace.filter = { self }
-		Trace.mins   = Min
-		Trace.maxs   = Max
-
 		return self:GetGroundPos(util.TraceHull(Trace).HitPos)
 	end
 
-	-- NOTE: Very slow movement after climbing something, why?
-	function ENT:MoveToPos(Position)
-		local Delta   = Position - self.Position
-		local Target  = math.Round(Delta:Length())
-		local Max     = math.min(self.MaxSpeed * Tick, Target)
-		local Desired = self:GetGroundPos(self.Position + Delta:GetNormalized() * Max)
-		local Result  = self:GetMovePos(Desired)
+	function ENT:MoveTowards(Position)
+		local Delta    = self:GetGroundPos(Position) - self.Position
+		local Target   = math.Round(Delta:Length())
+		local Possible = math.min(self.MaxMove, Target)
+		local Result   = self:CalculateMove(Delta:GetNormalized() * Possible)
+
+		self.MaxMove = self.MaxMove - Possible
 
 		self.loco:FaceTowards(Result)
 		self:SetPos(Result)
@@ -261,7 +264,7 @@ do -- Movement functions
 	end
 
 	function ENT:IsOnDestiny(Position)
-		if not Position:IsEqualTol(self.Destiny, 1) then return false end
+		if self.Position ~= Position then return false end
 
 		self.Destiny = self:ShiftWaypoint()
 
@@ -272,29 +275,29 @@ do -- Movement functions
 		if self.Halted then return end
 		if not self:HasDestiny() then return end
 
-		local NewPos = self:MoveToPos(self.Destiny)
+		while self.Destiny and self.MaxMove > 0 do
+			local NewPos = self:MoveTowards(self.Destiny)
 
-		if self:IsOnDestiny(NewPos) then
-			if not self.Destiny then
-				print("Arrived")
-			else
-				print("Moved to next waypoint")
+			if not self:IsOnDestiny(NewPos) then
+				self.Position = NewPos
+
+				if not self.Destiny then
+					print("Arrived")
+				else
+					print("Moved to next waypoint")
+				end
 			end
-		elseif self.Position == NewPos then
-			self.Destiny = self:ShiftWaypoint()
-
-			print("Stuck")
 		end
 	end
 end
 
 do -- NextBot hooks
 	function ENT:RunBehaviour()
-		self.Speed = 0
-
 		self:StartActivity(ACT_IDLE)
 
 		while true do
+			self.MaxMove = self.MaxSpeed * Tick
+
 			self:MoveToDestiny()
 
 			coroutine.yield()
