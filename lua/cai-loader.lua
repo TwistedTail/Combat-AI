@@ -5,17 +5,6 @@
 
 print("\n===========[ Loading Combat AI ]============\n|")
 
--- Creating global table and namespaces
-if not CAI then
-	CAI = {
-		Globals    = {},
-		Networking = { Sender = {}, Receiver = {}, },
-		Nodes      = {},
-		Squadrons  = { Objects = {} },
-		Utilities  = {},
-	}
-end
-
 if SERVER then
 	local Text        = "| > Loaded %s serverside file(s).\n| > Loaded %s shared file(s).\n| > Loaded %s clientside file(s)."
 	local Realms      = { client = "client", server = "server", shared = "shared" }
