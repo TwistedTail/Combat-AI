@@ -10,6 +10,7 @@ local CNode   = CNode
 local Utils   = CAI.Utilities
 local Globals = CAI.Globals
 local Tick    = 0.105 -- Nextbot tickrate, can it be changed?
+local NoBrain = GetConVar("ai_disabled")
 
 ENT.GridName     = "human" -- Name of the grid used by the bot
 ENT.MaxHealth    = 100
@@ -289,9 +290,11 @@ do -- NextBot hooks
 		self:SetSequence(self.IdleAnim)
 
 		while true do
-			self.MaxMove = self.MaxSpeed * Tick
+			if not NoBrain:GetBool() then
+				self.MaxMove = self.MaxSpeed * Tick
 
-			self:MoveToDestiny()
+				self:MoveToDestiny()
+			end
 
 			coroutine.yield()
 		end
