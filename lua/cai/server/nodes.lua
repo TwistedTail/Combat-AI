@@ -90,25 +90,17 @@ local function CheckWater(Data, Traces)
 	local Floor  = Traces.Floor.HitPos
 
 	if Water.Hit then
-		local WaterPos = Water.HitPos
-		local Depth    = WaterPos.z - Floor.z
+		local Depth = Water.HitPos.z - Floor.z
 
-		if Depth > MaxCrouch then
-			if Coords ~= CNode.GetCoordinates(Grid.Name, WaterPos) then return end
+		if Depth > MaxCrouch then return end
+		if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
 
-			Data.FootPos = WaterPos
-			Data.Swim    = true
-			Data.Crouch  = nil
-		else
-			if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
-
-			if Data.Crouch and Depth > MaxJump then
-				Data.Crouch = nil
-			end
-
-			Data.FootPos = Floor
-			Data.Depth   = Depth
+		if Data.Crouch and Depth > MaxJump then
+			Data.Crouch = nil
 		end
+
+		Data.FootPos = Floor
+		Data.Depth   = Depth
 	else
 		if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
 
