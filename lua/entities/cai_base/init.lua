@@ -270,7 +270,7 @@ do -- Movement functions
 		while self.Destiny and self.MaxMove > 0 do
 			local Position = self:MoveTowards(self.Destiny)
 
-			if Position == self.Destiny or Position == self.Position then
+			if Position == self.Destiny or Position:IsEqualTol(self.Position, 0.1) then
 				self.Destiny = self:ShiftWaypoint()
 
 				if not self.Destiny then

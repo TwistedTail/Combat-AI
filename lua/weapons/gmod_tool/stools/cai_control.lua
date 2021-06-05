@@ -51,6 +51,7 @@ end
 if CLIENT then
 	language.Add("tool.cai_control.name", "Bot Controller")
 	language.Add("tool.cai_control.desc", "Manually control CAI Bots.")
+	language.Add("tool.cai_control.0", "Left click to select bots, right click to set their goal.")
 
 	local HaloColor = Color(255, 255, 0)
 	local Selected  = {}
