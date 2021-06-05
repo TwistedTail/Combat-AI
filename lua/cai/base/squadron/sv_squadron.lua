@@ -109,6 +109,16 @@ do -- Squadron object methods
 		Squads.Remove(self.Name)
 	end
 
+	function Meta:RequestPath(Goal, Type)
+		for Member in pairs(self.Members) do
+			Member:RequestPath(Goal, Type)
+		end
+	end
+
+	function Meta:IsValid()
+		return not self.Disbanded
+	end
+
 	function Meta:ToString()
 		return format(Name, self.UID)
 	end
@@ -127,6 +137,7 @@ function Squads.Create(Name, Settings)
 		Name = Name,
 		Members = {},
 		Size = 0,
+		IsSquadron = true,
 	}
 
 	setmetatable(Object, Meta)

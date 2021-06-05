@@ -7,7 +7,6 @@ include("shared.lua")
 
 local util    = util
 local CNode   = CNode
-local Bots    = CAI.Bots
 local Utils   = CAI.Utilities
 local Globals = CAI.Globals
 local Tick    = 0.105 -- Nextbot tickrate, can it be changed?
@@ -42,14 +41,10 @@ function ENT:Initialize()
 	self.EyesIndex = self:LookupAttachment("eyes")
 
 	self:JoinOrCreateSquad()
-
-	Bots[self] = true
 end
 
 function ENT:OnRemove()
 	self:LeaveSquad()
-
-	Bots[self] = nil
 end
 
 do -- Squadron functions and hooks
@@ -137,7 +132,17 @@ do -- Waypoint functions
 end
 
 do -- Path functions
-	function ENT:PushPath(Path)
+	local Paths = CAI.Paths
+
+	function ENT:RequestPath(Goal, Type)
+		if not isvector(Goal) then return end
+
+		Paths.Request(self, self.GridName, self.Position, Goal, Type)
+	end
+
+	function ENT:ReceivePath(Path, Type)
+		print(self, " received path ", Type or "Unknown")
+
 		for I = 1, #Path do
 			self:PushWaypoint(Path[I])
 		end

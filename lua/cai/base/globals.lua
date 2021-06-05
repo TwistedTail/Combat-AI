@@ -18,24 +18,5 @@ Globals.SquadSize = 10
 
 if CLIENT then return end
 
-CAI.Bots = CAI.Bots or {} -- Temp
-
-local CNode = CNode
-local Bots  = CAI.Bots
-
 -- Initializing the human grid
 CNode.AddGrid("human", Vector(35, 35, 75))
-
-hook.Add("Tick", "CAI Pathfinding Result", function()
-	local Paths = CNode.GetPaths()
-
-	if not Paths then return end
-
-	for Name, Path in pairs(Paths) do
-		for Bot in pairs(Bots) do
-			Bot:PushPath(Path)
-		end
-
-		Paths[Name] = nil
-	end
-end)
