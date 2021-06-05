@@ -18,7 +18,7 @@ concommand.Add("cai_node", function(Player)
 
 	CNode.AddNode(Grid.Name, Position, Node.FootPos)
 
-	print("Created new node at ", Node.Position)
+	print("Created new node at ", Node.Coordinates * Grid.NodeSize)
 end)
 
 concommand.Add("cai_clear", function(Player)

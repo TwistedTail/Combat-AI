@@ -1,4 +1,5 @@
 local IsInWorld    = util.IsInWorld
+local TraceLine    = util.TraceLine
 local TraceHull    = util.TraceHull
 local HookRun      = hook.Run
 local CAI          = CAI
@@ -14,6 +15,7 @@ local MaxJump      = Globals.MaxJump
 local Grid         = CNode.GetGrid("human")
 local HalfHeight   = Vector(0, 0, MaxHeight * 0.5)
 local UpNormal     = Vector(0, 0, 1)
+local NodeSize     = Vector(HalfWidth, HalfWidth)
 local WalkSize     = Vector(HalfWidth, HalfWidth, MaxHeight - MaxJump)
 local CrouchSize   = Vector(HalfWidth, HalfWidth, MaxCrouch - MaxJump)
 local WalkOffset   = Vector(0,0, MaxJump + MaxHeight * 0.5)
@@ -23,8 +25,8 @@ local NodeTrace = {
 	start  = true,
 	endpos = true,
 	mask   = true,
-	mins   = -Vector(HalfWidth, HalfWidth),
-	maxs   = Vector(HalfWidth, HalfWidth),
+	mins   = true,
+	maxs   = true,
 }
 
 local WalkTrace = {
@@ -36,13 +38,15 @@ local WalkTrace = {
 }
 
 local function CheckGround(Data, Traces)
-	local Position = Data.Position
+	local Position = Data.Coordinates * Grid.NodeSize
 
 	if not IsInWorld(Position) then return end
 
 	NodeTrace.start  = Position + HalfHeight
 	NodeTrace.endpos = Position - HalfHeight
 	NodeTrace.mask   = MASK_PLAYERSOLID_BRUSHONLY
+	NodeTrace.mins   = -NodeSize
+	NodeTrace.maxs   = NodeSize
 
 	local Ground = TraceHull(NodeTrace)
 
@@ -61,13 +65,13 @@ local function CheckVertical(Data, Traces)
 	NodeTrace.start  = Ground
 	NodeTrace.endpos = Ground + UpNormal * 55000
 
-	local Sky    = TraceHull(NodeTrace)
+	local Sky    = TraceLine(NodeTrace)
 	local HitPos = Sky.HitPos
 
 	NodeTrace.start  = HitPos
 	NodeTrace.endpos = HitPos + UpNormal * -55000
 
-	local Floor = TraceHull(NodeTrace)
+	local Floor = TraceLine(NodeTrace)
 	local Height = (HitPos - Floor.HitPos):Length()
 
 	if Height < MaxHeight then
@@ -85,7 +89,7 @@ end
 local function CheckWater(Data, Traces)
 	NodeTrace.mask = MASK_WATER
 
-	local Water  = TraceHull(NodeTrace)
+	local Water  = TraceLine(NodeTrace)
 	local Coords = Data.Coordinates
 	local Floor  = Traces.Floor.HitPos
 
@@ -129,14 +133,12 @@ function Nodes.CheckSpot(Pos)
 
 	return PerformCheck({
 		Coordinates = Utils.DivideVector(Position, Grid.NodeSize),
-		Position    = Position,
 	})
 end
 
 function Nodes.CheckCoordinates(Coords)
 	return PerformCheck({
 		Coordinates = Coords,
-		Position    = Coords * Grid.NodeSize,
 	})
 end
 
