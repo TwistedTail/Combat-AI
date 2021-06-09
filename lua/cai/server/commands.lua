@@ -31,6 +31,7 @@ end)
 
 do -- Node generation
 	local Utils   = CAI.Utilities
+	local Clamp   = math.Clamp
 	local Result  = "%s node generation after %s seconds (%s iterations).\nPurged %s unused nodes.\nGenerated %s walkable nodes."
 	local Sides   = {}
 	local Found   = {}
@@ -74,9 +75,13 @@ do -- Node generation
 		local Node   = Nodes.CheckCoordinates(Coords)
 
 		if not Node then return end
-		if not CNode.AddNode(Grid.Name, Position, Node.FootPos) then return end
+		if not CNode.AddNode(Grid.Name, Position, Node.FootPos, Node.Cost) then return end
 
 		return Node, Key
+	end
+
+	local function GetSideCost(From, To)
+		return 1 + Clamp((To.z - From.z) / Globals.MaxJump, -0.2, 0.2)
 	end
 
 	local function ExploreSides(Coordinates, FootPos)
@@ -90,7 +95,9 @@ do -- Node generation
 			if not Node then continue end
 
 			if Nodes.CanConnect(FootPos, Node.FootPos) then
-				CNode.ConnectTo(Grid.Name, FootPos, Node.FootPos)
+				local Cost = GetSideCost(FootPos, Node.FootPos)
+
+				CNode.ConnectTo(Grid.Name, FootPos, Node.FootPos, Cost)
 			end
 
 			if Key then

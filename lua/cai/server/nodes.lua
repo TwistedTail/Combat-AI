@@ -116,6 +116,20 @@ local function CheckWater(Data, Traces)
 	return true
 end
 
+local function ComputeCost(Data, Traces)
+	local Cost = Globals.Materials[Traces.Ground.MatType] or 1
+
+	if Data.Crouch then
+		Cost = Cost * 1.5
+	elseif Data.Depth then
+		local Mult = 1 + (Data.Depth / MaxCrouch) * 0.5
+
+		Cost = Cost * Mult
+	end
+
+	Data.Cost = Cost
+end
+
 local function PerformCheck(Data)
 	local Traces = { Ground = true, Sky = true, Floor = true, Water = true, }
 
@@ -123,7 +137,7 @@ local function PerformCheck(Data)
 	if not CheckVertical(Data, Traces) then return end
 	if not CheckWater(Data, Traces) then return end
 
-	HookRun("CAI_CheckPosition", Data, Traces)
+	ComputeCost(Data, Traces)
 
 	return Data
 end
