@@ -5,23 +5,6 @@ local Nodes   = CAI.Nodes
 local Grid    = CNode.GetGrid("human")
 local print   = print
 
-concommand.Add("cai_node", function(Player)
-	if not IsValid(Player) then return end
-	if not Player:IsSuperAdmin() then return end
-
-	local Position = Player:GetEyeTrace().HitPos
-
-	if CNode.HasNode(Grid.Name, Position) then return end
-
-	local Node = Nodes.CheckSpot(Position)
-
-	if not Node then return end
-
-	CNode.AddNode(Grid.Name, Position, Node.FootPos)
-
-	print("Created new node at ", Node.Coordinates * Grid.NodeSize)
-end)
-
 concommand.Add("cai_clear", function(Player)
 	if IsValid(Player) and not Player:IsSuperAdmin() then return end
 

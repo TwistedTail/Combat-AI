@@ -1,6 +1,7 @@
 local CAI     = CAI
 local CNode   = CNode
 local Network = CAI.Networking
+local Nodes   = CAI.Nodes
 
 TOOL.Name = "#tool.cai_control.name"
 TOOL.Category = "Combat AI"
@@ -44,6 +45,20 @@ function TOOL:RightClick(Trace)
 	if not CNode.HasGrid(self.GridName, HitPos) then return false end
 
 	self.Selected:RequestPath(HitPos, "Full")
+
+	return true
+end
+
+function TOOL:Reload(Trace)
+	if CLIENT then return true end
+	local Node = Nodes.CheckSpot(Trace.HitPos)
+
+	if not Node then
+		print("A node can't be created here")
+	else
+		print("Printing node information")
+		PrintTable(Node)
+	end
 
 	return true
 end
