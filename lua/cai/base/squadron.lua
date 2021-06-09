@@ -19,10 +19,18 @@ do -- Squadron object methods
 
 		if self.Members[Entity] then return end
 
+		local OldSquad = Entity.Squadron
+
 		self.Members[Entity] = true
 		self.Size = self.Size + 1
 
+		if OldSquad then
+			OldSquad:RemoveMember(Entity)
+		end
+
 		if Entity.OnJoinedSquad then
+			Entity.Squadron = self
+
 			Entity:OnJoinedSquad(self)
 		end
 
@@ -43,6 +51,8 @@ do -- Squadron object methods
 		self.Size = self.Size - 1
 
 		if Entity.OnLeftSquad then
+			Entity.Squadron = nil
+
 			Entity:OnLeftSquad(self)
 		end
 

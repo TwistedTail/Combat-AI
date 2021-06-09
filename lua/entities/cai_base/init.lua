@@ -42,7 +42,13 @@ function ENT:Initialize()
 	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
 
+	self:OnInitialized()
+end
+
+function ENT:OnInitialized()
 	self:JoinOrCreateSquad()
+
+	--PrintTable(self:GetSequenceList())
 end
 
 function ENT:OnRemove()
@@ -72,11 +78,11 @@ do -- Squadron functions and hooks
 	end
 
 	function ENT:OnJoinedSquad(Squad)
-		self.Squadron = Squad
+		print(self, "OnJoinedSquad", Squad)
 	end
 
-	function ENT:OnLeftSquad()
-		self.Squadron = nil
+	function ENT:OnLeftSquad(Squad)
+		print(self, "OnLeftSquad", Squad)
 	end
 end
 
@@ -249,6 +255,7 @@ do -- Movement functions
 		if self.Destiny then return true end
 		if not next(self.Waypoints) then
 			self:SetSequence(self.IdleAnim)
+			self:ResetSequenceInfo()
 
 			return false
 		end
@@ -287,8 +294,6 @@ end
 
 do -- NextBot hooks
 	function ENT:RunBehaviour()
-		self:SetSequence(self.IdleAnim)
-
 		while true do
 			if not NoBrain:GetBool() then
 				self.MaxMove = self.MaxSpeed * Tick
