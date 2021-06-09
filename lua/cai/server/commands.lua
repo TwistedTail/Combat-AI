@@ -1,8 +1,9 @@
-local CAI   = CAI
-local CNode = CNode
-local Nodes = CAI.Nodes
-local Grid  = CNode.GetGrid("human")
-local print = print
+local CAI     = CAI
+local CNode   = CNode
+local Globals = CAI.Globals
+local Nodes   = CAI.Nodes
+local Grid    = CNode.GetGrid("human")
+local print   = print
 
 concommand.Add("cai_node", function(Player)
 	if not IsValid(Player) then return end
@@ -36,7 +37,7 @@ do -- Node generation
 	local Sides   = {}
 	local Found   = {}
 	local List    = {}
-	local MaxStep = 66
+	local MaxStep = 30
 	local Count   = 0
 	local Iter    = 0
 	local Active, Start
@@ -189,7 +190,6 @@ do -- Node generation
 end
 
 do -- Node saving and loading
-	local Globals  = CAI.Globals
 	local MapPath  = Globals.MapPath
 	local FilePath = Globals.FilePath
 

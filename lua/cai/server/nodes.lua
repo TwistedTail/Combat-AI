@@ -1,7 +1,5 @@
-local IsInWorld    = util.IsInWorld
 local TraceLine    = util.TraceLine
 local TraceHull    = util.TraceHull
-local HookRun      = hook.Run
 local CAI          = CAI
 local CNode        = CNode
 local Globals      = CAI.Globals
@@ -16,10 +14,6 @@ local Grid         = CNode.GetGrid("human")
 local HalfHeight   = Vector(0, 0, MaxHeight * 0.5)
 local UpNormal     = Vector(0, 0, 1)
 local NodeSize     = Vector(HalfWidth, HalfWidth)
-local WalkSize     = Vector(HalfWidth, HalfWidth, MaxHeight - MaxJump)
-local CrouchSize   = Vector(HalfWidth, HalfWidth, MaxCrouch - MaxJump)
-local WalkOffset   = Vector(0,0, MaxJump + MaxHeight * 0.5)
-local CrouchOffset = Vector(0,0, MaxJump + MaxCrouch * 0.5)
 
 local NodeTrace = {
 	start  = true,
@@ -29,26 +23,14 @@ local NodeTrace = {
 	maxs   = true,
 }
 
-local WalkTrace = {
-	start  = true,
-	endpos = true,
-	mins   = true,
-	maxs   = true,
-	mask   = MASK_PLAYERSOLID_BRUSHONLY,
-}
-
 local function CheckGround(Data, Traces)
 	local Position = Data.Coordinates * Grid.NodeSize
-
-	if not IsInWorld(Position) then return end
 
 	NodeTrace.start  = Position + HalfHeight
 	NodeTrace.endpos = Position - HalfHeight
 	NodeTrace.mask   = MASK_PLAYERSOLID_BRUSHONLY
-	NodeTrace.mins   = -NodeSize
-	NodeTrace.maxs   = NodeSize
 
-	local Ground = TraceHull(NodeTrace)
+	local Ground = TraceLine(NodeTrace)
 
 	if Ground.StartSolid then return end
 	if Ground.HitNotSolid then return end
@@ -62,17 +44,25 @@ end
 local function CheckVertical(Data, Traces)
 	local Ground = Traces.Ground.HitPos
 
-	NodeTrace.start  = Ground
+	NodeTrace.start  = Ground + UpNormal * MaxJump
 	NodeTrace.endpos = Ground + UpNormal * 55000
+	NodeTrace.mins   = -NodeSize
+	NodeTrace.maxs   = NodeSize
 
-	local Sky    = TraceLine(NodeTrace)
+	local Sky    = TraceHull(NodeTrace)
 	local HitPos = Sky.HitPos
 
 	NodeTrace.start  = HitPos
 	NodeTrace.endpos = HitPos + UpNormal * -55000
 
-	local Floor = TraceLine(NodeTrace)
-	local Height = (HitPos - Floor.HitPos):Length()
+	local Spot    = TraceHull(NodeTrace)
+	local Floor   = TraceLine(NodeTrace)
+	local FootPos = Floor.HitPos
+
+	if Data.Coordinates ~= CNode.GetCoordinates(Grid.Name, FootPos) then return end
+	if Spot.HitPos.z - FootPos.z > MaxJump then return end
+
+	local Height = HitPos.z - FootPos.z
 
 	if Height < MaxHeight then
 		if Height < MaxCrouch then return end
@@ -80,7 +70,7 @@ local function CheckVertical(Data, Traces)
 		Data.Crouch = true
 	end
 
-	Traces.Sky    = Sky
+	Traces.Sky   = Sky
 	Traces.Floor = Floor
 
 	return true
@@ -90,14 +80,11 @@ local function CheckWater(Data, Traces)
 	NodeTrace.mask = MASK_WATER
 
 	local Water  = TraceLine(NodeTrace)
-	local Coords = Data.Coordinates
 	local Floor  = Traces.Floor.HitPos
+	local Depth  = Water.HitPos.z - Floor.z
 
-	if Water.Hit then
-		local Depth = Water.HitPos.z - Floor.z
-
+	if Water.Hit and Depth > 0 then
 		if Depth > MaxCrouch then return end
-		if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
 
 		if Data.Crouch and Depth > MaxJump then
 			Data.Crouch = nil
@@ -106,8 +93,6 @@ local function CheckWater(Data, Traces)
 		Data.FootPos = Floor
 		Data.Depth   = Depth
 	else
-		if Coords ~= CNode.GetCoordinates(Grid.Name, Floor) then return end
-
 		Data.FootPos = Floor
 	end
 
@@ -156,24 +141,71 @@ function Nodes.CheckCoordinates(Coords)
 	})
 end
 
--- TODO: Add a middle check to make sure the connection is walkable
--- TODO: Add a slope check to replace that height difference bullshit
-function Nodes.CanConnect(From, To)
-	if math.abs(From.z - To.z) > MaxCrouch then return end -- NOTE: I don't trust this one
+do -- Connection check
+	local CrouchSize   = Vector(HalfWidth, HalfWidth, MaxCrouch - MaxJump)
+	local CrouchOffset = Vector(0, 0, MaxJump + CrouchSize.z * 0.5)
 
-	WalkTrace.start  = From + WalkOffset
-	WalkTrace.endpos = To + WalkOffset
-	WalkTrace.mins   = -WalkSize
-	WalkTrace.maxs   = WalkSize
+	local MoveTrace = {
+		start  = true,
+		endpos = true,
+		mins   = true,
+		maxs   = true,
+		mask   = MASK_PLAYERSOLID_BRUSHONLY,
+	}
 
-	local Standing = TraceHull(WalkTrace)
+	local function CheckMidpoint(From, To)
+		local Position = (From + To) * 0.5
 
-	if not Standing.Hit then return true end -- Path is clear
+		NodeTrace.start  = Position + HalfHeight
+		NodeTrace.endpos = Position - HalfHeight
+		NodeTrace.mask   = MASK_PLAYERSOLID_BRUSHONLY
+		NodeTrace.mins   = -NodeSize
+		NodeTrace.maxs   = NodeSize
 
-	WalkTrace.start  = From + CrouchOffset
-	WalkTrace.endpos = To + CrouchOffset
-	WalkTrace.mins   = -CrouchSize
-	WalkTrace.maxs   = CrouchSize
+		local Zone = TraceHull(NodeTrace)
 
-	return not TraceHull(WalkTrace).Hit, true
+		if Zone.StartSolid then return end
+		if Zone.HitNotSolid then return end
+		if Zone.Hit and UpNormal:Dot(Zone.HitNormal) < MaxSlope then return end
+
+		NodeTrace.start  = Zone.HitPos
+		NodeTrace.endpos = Zone.HitPos - UpNormal * 55000
+
+		local Center = TraceLine(NodeTrace)
+
+		return Center.HitPos
+	end
+
+	local function CheckMove(From, To)
+		if To.z - From.z > MaxJump then return end
+
+		MoveTrace.start  = From + CrouchOffset
+		MoveTrace.endpos = To + CrouchOffset
+
+		local Result = TraceHull(MoveTrace)
+
+		return not Result.Hit
+	end
+
+	function Nodes.CanConnect(From, To)
+		local Center = CheckMidpoint(From, To)
+
+		if not Center then return end
+
+		local First = CheckMidpoint(From, Center)
+		local Second = CheckMidpoint(Center, To)
+
+		if not First then return end
+		if not Second then return end
+
+		MoveTrace.mins = -CrouchSize
+		MoveTrace.maxs = CrouchSize
+
+		if not CheckMove(From, First) then return end
+		if not CheckMove(First, Center) then return end
+		if not CheckMove(Center, Second) then return end
+		if not CheckMove(Second, To) then return end
+
+		return true
+	end
 end
