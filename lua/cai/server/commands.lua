@@ -129,6 +129,7 @@ do -- Node generation
 
 		if Count == 0 then
 			hook.Remove("Tick", "CAI NodeGen")
+			timer.Remove("CAI NodeGen")
 
 			print(Result:format("Finished", os.time() - Start, Iter, CNode.PurgeUnused(Grid.Name), CNode.GetNodeCount(Grid.Name)))
 
@@ -158,6 +159,10 @@ do -- Node generation
 		Found[Key] = Node
 
 		hook.Add("Tick", "CAI NodeGen", Search)
+		timer.Create("CAI NodeGen", 30, 0, function()
+			print("Nodes created: " .. CNode.GetNodeCount(Grid.Name))
+			print("Unused nodes: " .. CNode.GetUnusedCount(Grid.Name))
+		end)
 	end)
 
 	concommand.Add("cai_stop", function(Player)
@@ -179,6 +184,7 @@ do -- Node generation
 		end
 
 		hook.Remove("Tick", "CAI NodeGen")
+		timer.Remove("CAI NodeGen")
 	end)
 end
 
