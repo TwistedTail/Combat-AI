@@ -4,7 +4,7 @@ local Weaponry = CAI.Weaponry
 local WEAPON   = Weaponry.Register("rifle")
 
 WEAPON.Model      = "models/weapons/w_rif_famas.mdl"
-WEAPON.FireSound  = "weapons/famas/famas-1.wav"
+WEAPON.FireSound  = "weapons/ump45/ump45-1.wav"
 WEAPON.FireRate   = 600 -- shots per minute
 WEAPON.Spread     = 0.01
 WEAPON.ReloadTime = 4
@@ -59,8 +59,8 @@ function WEAPON:Initialize()
 		Attacker   = true,
 		Damage     = 20,
 		Force      = 5,
-		Tracer     = 1,
-		TracerName = "Tracer",
+		Tracer     = 5,
+		TracerName = "LaserTracer",
 		Spread     = Vector(self.Spread, self.Spread),
 		Dir        = true,
 		Src        = true,
@@ -82,16 +82,15 @@ function WEAPON:CreateProp(Owner)
 
 	local AttachID   = Owner:LookupAttachment("anim_attachment_RH")
 	local Attachment = Owner:GetAttachment(AttachID)
+	local Muzzle     = Prop:LookupAttachment("muzzle")
 
 	Prop:SetPos(Attachment.Pos)
 	Prop:SetParent(Owner, AttachID)
 	Prop:AddEffects(EF_BONEMERGE)
 	Prop:Spawn()
 
-	local Muzzle = Prop:LookupAttachment("muzzle")
-
-	self.Prop   = Prop
 	self.Muzzle = Prop:WorldToLocal(Prop:GetAttachment(Muzzle).Pos)
+	self.Prop   = Prop
 
 	return Prop
 end
@@ -118,8 +117,11 @@ function WEAPON:Shoot(Position)
 	Bullet.Src      = Source
 	Bullet.Dir      = (Position - Source):GetNormalized()
 
-
 	Owner:FireBullets(Bullet)
+
+	self.Prop:EmitSound(self.FireSound, SNDLVL_GUNFIRE, 100, 1, CHAN_WEAPON)
+
+	self:MuzzleFlash(Source, Bullet.Dir)
 
 	self.Ammo      = self.Ammo - 1
 	self.Cycling   = true
@@ -130,6 +132,16 @@ function WEAPON:Shoot(Position)
 	end
 
 	return true
+end
+
+function WEAPON:MuzzleFlash(Position, Direction)
+	local Angle = Direction:Angle()
+	local Effect = EffectData()
+		Effect:SetOrigin(Position + Direction * 5)
+		Effect:SetAngles(Angle)
+		Effect:SetScale(1)
+
+	util.Effect("MuzzleEffect", Effect)
 end
 
 function WEAPON:Reload()
