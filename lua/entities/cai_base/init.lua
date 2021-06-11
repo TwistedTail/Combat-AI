@@ -21,8 +21,6 @@ ENT.WalkSpeed    = 200 -- Temp
 ENT.WalkAccel    = 400 -- Temp
 ENT.RunSpeed     = 400 -- Temp
 ENT.RunAccel     = 800 -- Temp
-ENT.IdleAnim     = "idle_subtle"
-ENT.RunAnim      = "run_all"
 
 function ENT:Initialize()
 	self:SetModel("models/humans/group03/male_09.mdl")
@@ -36,6 +34,7 @@ function ENT:Initialize()
 	self.Grid      = CNode.GetGrid(self.GridName)
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
 	self.Filter    = { self }
+	self.Sequences = {}
 	self.Waypoints = {}
 	self.Targets   = {}
 	self.MaxSpeed  = self.RunSpeed
@@ -47,12 +46,87 @@ end
 
 function ENT:OnInitialized()
 	self:JoinOrCreateSquad()
-
-	--PrintTable(self:GetSequenceList())
+	self:GiveWeapon("rifle")
 end
 
 function ENT:OnRemove()
+	local Weapon = self.Weapon
+
 	self:LeaveSquad()
+
+	if Weapon then
+		Weapon:Remove()
+	end
+end
+
+do -- Weaponry functions
+	local Weaponry = CAI.Weaponry
+
+	function ENT:GiveWeapon(Name)
+		if not isstring(Name) then return end
+
+		local Weapon = Weaponry.Give(Name, self)
+
+		if not Weapon then return end
+
+		self:SetSequences(Weapon.Sequences)
+
+		self.Weapon = Weapon
+
+		return true
+	end
+
+	function ENT:Attack(Entity)
+		if not self.Weapon then return end
+		if not IsValid(Entity) then return end
+
+		local Position = Entity:EyePos()
+
+		self.loco:FaceTowards(Position)
+		self.Weapon:Shoot(Position)
+	end
+
+	function ENT:AttackPos(Position)
+		if not self.Weapon then return end
+		if not isvector(Position) then return end
+
+		self.loco:FaceTowards(Position)
+		self.Weapon:Shoot(Position)
+	end
+end
+
+do -- Sequence functions
+	function ENT:SetSequences(Sequences)
+		if not istable(Sequences) then return end
+
+		for K in pairs(self.Sequences) do
+			self.Sequences[K] = nil
+		end
+
+		for K, V in pairs(Sequences) do
+			self.Sequences[K] = V
+		end
+	end
+
+	function ENT:ChangeSequence(Name)
+		if not isstring(Name) then return end
+
+		local Data = self.Sequences[Name]
+
+		if not Data then return end
+
+		if istable(Data) then
+			local Index = math.random(#Data)
+
+			self:SetSequence(Data[Index])
+		else
+			self:SetSequence(Data)
+		end
+
+		self:ResetSequenceInfo()
+
+		return true
+	end
 end
 
 do -- Squadron functions and hooks
@@ -254,8 +328,7 @@ do -- Movement functions
 	function ENT:HasDestiny()
 		if self.Destiny then return true end
 		if not next(self.Waypoints) then
-			self:SetSequence(self.IdleAnim)
-			self:ResetSequenceInfo()
+			self:ChangeSequence("aim_idle")
 
 			return false
 		end
@@ -263,8 +336,7 @@ do -- Movement functions
 		self.Destiny = self:ShiftWaypoint()
 
 		if self.Destiny then
-			self:SetSequence(self.RunAnim)
-			self:ResetSequenceInfo()
+			self:ChangeSequence("aim_run")
 		end
 
 		return true
@@ -306,7 +378,8 @@ do -- NextBot hooks
 	end
 
 	function ENT:Think()
-		local Eyes = self:GetAttachment(self.EyesIndex)
+		local Eyes   = self:GetAttachment(self.EyesIndex)
+		local Weapon = self.Weapon
 
 		self.Position = self:GetPos()
 		self.ShootPos = Eyes.Pos
@@ -319,6 +392,10 @@ do -- NextBot hooks
 
 				self:OnExtinguished()
 			end
+		end
+
+		if Weapon then
+			Weapon:Think()
 		end
 
 		self:UpdateHeadPose()
@@ -362,9 +439,15 @@ do -- NextBot hooks
 	end
 
 	function ENT:OnKilled(DamageInfo)
+		local Weapon = self.Weapon
+
 		hook.Run("OnNPCKilled", self, DamageInfo:GetAttacker(), DamageInfo:GetInflictor())
 
 		self:LeaveSquad()
+
+		if Weapon then
+			Weapon:Remove()
+		end
 
 		if self.OnFire then
 			self:SetModel("models/player/charple.mdl")
