@@ -3,7 +3,6 @@ local File = "cai-loader.lua"
 -- Creating global table and namespaces
 if not CAI then
 	CAI = {
-		Behaviors  = { Movement = {}, },
 		Globals    = {},
 		Networking = { Sender = {}, Receiver = {}, },
 		Nodes      = {},
