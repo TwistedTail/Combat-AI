@@ -145,11 +145,31 @@ do -- Squadron functions and hooks
 		New:AddMember(self)
 	end
 
+	function ENT:HasRelation(Entity)
+		if not self.Squadron then return end
+
+		return self.Squadron:HasRelation(Entity)
+	end
+
+	function ENT:GetRelation(Entity)
+		if not self.Squadron then return end
+
+		return self.Squadron:GetRelation(Entity)
+	end
+
+	function ENT:ForgetRelation(Entity)
+		if not self.Squadron then return end
+
+		return self.Squadron:ForgetRelation(Entity)
+	end
+
 	function ENT:LeaveSquad()
 		if not self.Squadron then return end
 
 		self.Squadron:RemoveMember(self)
 	end
+
+	-- Hooks
 
 	function ENT:OnJoinedSquad(Squad)
 		print(self, "OnJoinedSquad", Squad)
@@ -157,6 +177,14 @@ do -- Squadron functions and hooks
 
 	function ENT:OnLeftSquad(Squad)
 		print(self, "OnLeftSquad", Squad)
+	end
+
+	function ENT:OnSetRelation(Entity, Previous, Relation)
+		print(self, "OnSetRelation", Entity, Previous, Relation)
+	end
+
+	function ENT:OnForgetRelation(Entity, Relation)
+		print(self, "OnForgetRelation", Entity, Relation)
 	end
 end
 
@@ -418,8 +446,14 @@ do -- NextBot hooks
 		print(self, "OnExtinguished")
 	end
 
+	-- Broken, June 2021 update seems to have capped MaxViewRange to 320 units
+	--[[
 	function ENT:OnEntitySight(Entity)
 		if Entity:IsPlayer() then return end -- Ignore players, broken
+
+		if not self:HasRelation(Entity) then
+			self:GetRelation(Entity)
+		end
 
 		print(self, "OnEntitySight", Entity)
 	end
@@ -429,8 +463,13 @@ do -- NextBot hooks
 
 		print(self, "OnEntitySightLost", Entity)
 	end
+	]]
 
 	function ENT:OnOtherKilled(Entity)
+		if self.IsLeader then
+			self:ForgetRelation(Entity)
+		end
+
 		print(self, "OnOtherKilled", Entity)
 	end
 
