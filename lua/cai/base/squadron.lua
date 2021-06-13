@@ -282,6 +282,10 @@ do -- Squadron object methods
 			self:RemoveMember(Member)
 		end
 
+		for Entity in pairs(self.Relations.Entities) do
+			self:ForgetRelation(Entity)
+		end
+
 		Squads.Remove(self.Name)
 	end
 
