@@ -169,6 +169,11 @@ function WEAPON:Think()
 end
 
 function WEAPON:Remove()
-	self.Prop:Remove()
+	local Prop = self.Prop
+
+	if IsValid(Prop) then
+		Prop:Remove()
+	end
+
 	self.Prop = nil
 end

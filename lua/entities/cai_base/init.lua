@@ -44,12 +44,16 @@ function ENT:Initialize()
 	self:OnInitialized()
 end
 
+function ENT:OnRemove()
+	self:OnRemoved()
+end
+
 function ENT:OnInitialized()
 	self:JoinOrCreateSquad()
 	self:GiveWeapon("rifle")
 end
 
-function ENT:OnRemove()
+function ENT:OnRemoved()
 	local Weapon = self.Weapon
 
 	self:LeaveSquad()
@@ -478,19 +482,13 @@ do -- NextBot hooks
 	end
 
 	function ENT:OnKilled(DamageInfo)
-		local Weapon = self.Weapon
-
 		hook.Run("OnNPCKilled", self, DamageInfo:GetAttacker(), DamageInfo:GetInflictor())
-
-		self:LeaveSquad()
-
-		if Weapon then
-			Weapon:Remove()
-		end
 
 		if self.OnFire then
 			self:SetModel("models/player/charple.mdl")
 		end
+
+		self:OnRemoved()
 
 		local Ragdoll = self:BecomeRagdoll(DamageInfo)
 
