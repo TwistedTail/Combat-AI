@@ -360,3 +360,17 @@ function Squads.Remove(Name)
 
 	Objects[Name] = nil
 end
+
+do -- Hooks
+	hook.Add("CAI_OnAddDetectable", "CAI Squad Detection", function(Entity)
+		for _, Squad in pairs(Objects) do
+			Squad:GetRelation(Entity)
+		end
+	end)
+
+	hook.Add("CAI_OnRemoveDetectable", "CAI Squad Detection", function(Entity)
+		for _, Squad in pairs(Objects) do
+			Squad:ForgetRelation(Entity)
+		end
+	end)
+end
