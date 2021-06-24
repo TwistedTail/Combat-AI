@@ -14,7 +14,7 @@ local NoBrain = GetConVar("ai_disabled")
 
 ENT.GridName     = "human" -- Name of the grid used by the bot
 ENT.MaxHealth    = 100
-ENT.MaxViewRange = 10000
+ENT.MaxViewRange = 7500
 ENT.FieldOfView  = 120
 ENT.JumpOffset   = Vector(0, 0, Globals.MaxJump)
 ENT.WalkSpeed    = 200 -- Temp
@@ -26,9 +26,6 @@ function ENT:Initialize()
 	self:SetModel("models/humans/group03/male_09.mdl")
 	self:SetMaxHealth(self.MaxHealth)
 	self:SetHealth(self.MaxHealth)
-
-	self:SetMaxVisionRange(self.MaxViewRange)
-	self:SetFOV(self.FieldOfView)
 	self:AddFlags(FL_OBJECT)
 
 	self.Grid      = CNode.GetGrid(self.GridName)
@@ -40,6 +37,8 @@ function ENT:Initialize()
 	self.MaxSpeed  = self.RunSpeed
 	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
+
+	CAI.CreateViewTrigger(self, self.MaxViewRange, self.FieldOfView)
 
 	self:OnInitialized()
 end
@@ -183,11 +182,23 @@ do -- Squadron functions and hooks
 		print(self, "OnLeftSquad", Squad)
 	end
 
+	function ENT:OnEnemySighted(Entity, Index)
+		print(self, "OnEnemySighted", Entity, Index)
+	end
+
+	function ENT:OnLostEnemySight(Entity)
+		print(self, "OnLostEnemySight", Entity)
+	end
+
 	function ENT:OnSetRelation(Entity, Previous, Relation)
+		self.View:CheckRelation(Entity, Previous, Relation)
+
 		print(self, "OnSetRelation", Entity, Previous, Relation)
 	end
 
 	function ENT:OnForgetRelation(Entity, Relation)
+		self.View:IgnoreEntity(Entity)
+
 		print(self, "OnForgetRelation", Entity, Relation)
 	end
 end
@@ -411,6 +422,7 @@ do -- NextBot hooks
 
 	function ENT:Think()
 		local Eyes   = self:GetAttachment(self.EyesIndex)
+		local View   = self.View
 		local Weapon = self.Weapon
 
 		self.Position = self:GetPos()
@@ -424,6 +436,10 @@ do -- NextBot hooks
 
 				self:OnExtinguished()
 			end
+		end
+
+		if View then
+			View:UpdatePos()
 		end
 
 		if Weapon then
