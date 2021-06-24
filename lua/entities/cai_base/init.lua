@@ -439,7 +439,11 @@ do -- NextBot hooks
 
 		self.OnFire = true
 
-		print(self, "OnIgnite")
+		self:OnIgnited()
+	end
+
+	function ENT:OnIgnited()
+		print(self, "OnIgnited")
 	end
 
 	function ENT:OnBurned()
