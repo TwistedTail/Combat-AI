@@ -9,9 +9,9 @@ do -- Squadron object methods
 	local Name   = "CAI Squadron %s"
 
 	local ValidRelations = {
-		Friend = true,
-		Foe = true,
-		Neutral = true,
+		Friend = D_LI,
+		Foe = D_HT,
+		Neutral = D_NU,
 	}
 
 	local function IsPawn(Entity)
@@ -19,7 +19,7 @@ do -- Squadron object methods
 		if Entity:IsNextBot() then return true end
 		if Entity:IsPlayer() then return true end
 
-		return Entity:IsBot()
+		return Entity:IsNPC()
 	end
 
 	function Meta:Lock()
@@ -181,6 +181,8 @@ do -- Squadron object methods
 
 		if Relation == Previous then return end
 
+		local Disposition = Entity:IsNPC() and ValidRelations[Relation] or nil
+
 		Relations.Entities[Entity]  = Relation
 		Relations[Relation][Entity] = true
 
@@ -196,6 +198,10 @@ do -- Squadron object methods
 
 		for Bot in pairs(self.Members) do
 			Bot:OnSetRelation(Entity, Previous, Relation)
+
+			if Disposition then
+				Entity:AddEntityRelationship(Bot, Disposition, 99)
+			end
 		end
 
 		return true
