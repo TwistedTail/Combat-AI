@@ -38,8 +38,6 @@ function ENT:Initialize()
 	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
 
-	CAI.CreateViewTrigger(self, self.MaxViewRange, self.FieldOfView)
-
 	self:OnInitialized()
 end
 
@@ -143,7 +141,7 @@ do -- Squadron functions and hooks
 		end
 
 		local Name = Utils.GetUID(self.GridName)
-		local New = Squads.Create(Name)
+		local New  = Squads.Create(Name)
 
 		New:AddMember(self)
 	end
@@ -188,18 +186,6 @@ do -- Squadron functions and hooks
 
 	function ENT:OnLostEnemySight(Entity)
 		print(self, "OnLostEnemySight", Entity)
-	end
-
-	function ENT:OnSetRelation(Entity, Previous, Relation)
-		self.View:CheckRelation(Entity, Previous, Relation)
-
-		print(self, "OnSetRelation", Entity, Previous, Relation)
-	end
-
-	function ENT:OnForgetRelation(Entity, Relation)
-		self.View:IgnoreEntity(Entity)
-
-		print(self, "OnForgetRelation", Entity, Relation)
 	end
 end
 

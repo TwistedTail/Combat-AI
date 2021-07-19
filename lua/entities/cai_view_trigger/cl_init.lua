@@ -14,12 +14,12 @@ local Angles = Angle()
 function ENT:Initialize()
 	self.Position = self:GetPos()
 
-	self:UpdateRadius()
+	self:SetNWVarProxy("Radius", function(_, _, _, Radius)
+		self:UpdateRadius(Radius)
+	end)
 end
 
-function ENT:UpdateRadius()
-	local Radius = self:GetNWFloat("Radius")
-
+function ENT:UpdateRadius(Radius)
 	if Radius <= 0 then return end
 
 	self.Radius = Radius
@@ -29,7 +29,7 @@ function ENT:UpdateRadius()
 end
 
 function ENT:Draw()
-	if not self.Radius then return self:UpdateRadius() end
+	if not self.Radius then return end
 
 	render.DrawWireframeBox(self.Position, Angles, -self.Size, self.Size, Box, true)
 	render.DrawWireframeSphere(self.Position, self.Radius, 30, 30, Sphere, true)

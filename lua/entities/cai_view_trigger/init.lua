@@ -5,6 +5,7 @@ include("shared.lua")
 
 ENT.DisableDuplicator = true
 ENT.DoNotDuplicate    = true
+ENT.ViewChecks        = 2
 
 local util      = util
 local CAI       = CAI
@@ -19,15 +20,19 @@ local Bones     = {
 	"ValveBiped.Bip01_Pelvis",
 }
 
-function CAI.CreateViewTrigger(Parent, Radius)
-	if not IsValid(Parent) then return end
+local function OnEntityRemoved(Entity, View)
+	if not IsValid(View) then return end
 
+	View:IgnoreEntity(Entity)
+end
+
+function CAI.CreateViewTrigger(Squadron, Radius)
 	local Trigger = ents.Create("cai_view_trigger")
 
 	if not IsValid(Trigger) then return end
 
-	local Position = Parent.Position or Parent:GetPos()
-	local Size     = Vector(Radius, Radius, Radius)
+	local Leader   = Squadron.Leader
+	local Position = Leader.Position or Leader:GetPos()
 
 	Trigger:SetPos(Position)
 	Trigger:SetModel("models/props_junk/watermelon01.mdl")
@@ -37,85 +42,81 @@ function CAI.CreateViewTrigger(Parent, Radius)
 	Trigger:Spawn()
 
 	Trigger:SetTrigger(true)
-	Trigger:SetCollisionBounds(-Size, Size)
 	Trigger:DrawShadow(false)
-
-	Trigger:SetNWFloat("Radius", Radius)
+	Trigger:UpdateRadius(Radius)
 
 	Trigger.Position = Position
-	Trigger.Parent   = Parent
-	Trigger.MaxRange = Radius * Radius
-	Trigger.Filter   = { Trigger, Parent }
+	Trigger.Squadron = Squadron
+	Trigger.Leader   = Leader
+	Trigger.Members  = Squadron.Members
+	Trigger.Filter   = { Trigger }
+	Trigger.Entities = {}
 	Trigger.Check    = {}
-	Trigger.Touched  = {}
-	Trigger.Spotted  = {}
-	Trigger.Unseen   = {}
-	Trigger.Outside  = {}
-
-	Parent:DeleteOnRemove(Trigger)
-
-	Parent.View = Trigger
 
 	return Trigger
 end
 
 function ENT:UpdatePos()
-	local Position = self.Parent.Position
+	local Leader   = self.Leader
+	local Position = Leader.Position or Leader:GetPos()
 
 	self.Position = Position
 
 	self:SetPos(Position)
 end
 
+function ENT:UpdateRadius(Radius)
+	if self.Radius == Radius then return end
+
+	local Size = Vector(Radius, Radius, Radius)
+
+	self:SetCollisionBounds(-Size, Size)
+	self:SetNWFloat("Radius", Radius)
+
+	self.Radius   = Radius
+	self.MaxRange = Radius * Radius
+end
+
+function ENT:GetNextWatcher()
+	local Members = self.Members
+	local Watcher = next(Members, self.Watcher) or next(Members)
+
+	self.Watcher = Watcher
+
+	return Watcher
+end
+
+function ENT:IgnoreEntity(Entity)
+	local Squad = self.Squadron
+	local UID   = Squad.UID
+
+	if self.Check[Entity] then
+		self.Check[Entity] = nil
+	else
+		local Data = self.Entities[Entity]
+
+		if Data then
+			self.Entities[Entity] = nil
+
+			if Data.State == "Spotted" then
+				Squad:OnLostSight(Entity, Data)
+			end
+		end
+	end
+
+	Entity:RemoveCallOnRemove("CAI Squad Sight " .. UID)
+end
+
 function ENT:CheckRelation(Entity, Previous, Relation)
 	if Previous == "Foe" then
 		self:IgnoreEntity(Entity)
 	elseif Relation == "Foe" then
+		local UID = self.Squadron.UID
+
 		self.Check[Entity] = Utils.CurTime + 0.1
+
+		Entity:CallOnRemove("CAI Squad Sight " .. UID, OnEntityRemoved, self)
 	end
-end
-
-function ENT:IgnoreEntity(Entity)
-	local Touched = self.Touched
-	local Entry   = Touched[Entity]
-
-	if Entry then
-		self[Entry][Entity] = nil
-		Touched[Entity]     = nil
-
-		if Entry == "Spotted" then
-			self:ReportLostSight(Entity)
-		end
-	elseif self.Check[Entity] then
-		self.Check[Entity] = nil
-	end
-end
-
-function ENT:AddOutsider(Entity)
-	self.Touched[Entity] = "Outside"
-	self.Outside[Entity] = true
-end
-
-function ENT:AddUnseen(Entity)
-	self.Touched[Entity] = "Unseen"
-	self.Unseen[Entity]  = true
-end
-
-function ENT:AddSpotted(Entity, Index)
-	self.Touched[Entity] = "Spotted"
-	self.Spotted[Entity] = Index or -1
-end
-
-function ENT:ReportSight(Entity, Index)
-	if not self.Spotted[Entity] then return end
-
-	self.Parent:OnEnemySighted(Entity, Index)
-end
-
-function ENT:ReportLostSight(Entity)
-	if self.Spotted[Entity] then return end
-
-	self.Parent:OnLostEnemySight(Entity)
 end
 
 function ENT:IsInRange(Entity)
@@ -126,11 +127,12 @@ function ENT:IsInRange(Entity)
 	return self.Position:DistToSqr(Position) <= self.MaxRange
 end
 
-function ENT:CanSee(Entity)
+function ENT:CanSee(Entity, Watcher)
 	if not IsValid(Entity) then return false end
-	if not self.Parent:TestPVS(Entity) then return false end
+	if not IsValid(Watcher) then Watcher = self:GetNextWatcher() end
+	if not Watcher:TestPVS(Entity) then return false end
 
-	Trace.start  = self.Parent.ShootPos
+	Trace.start  = Watcher.ShootPos
 	Trace.filter = self.Filter
 
 	for I = 1, #Bones do
@@ -154,102 +156,114 @@ function ENT:CanSee(Entity)
 	return not Result.Hit or Result.Entity == Entity
 end
 
-function ENT:CheckOutsiders(Checked)
-	for Entity in pairs(self.Outside) do
-		if Checked[Entity] then continue end
+local Checks = {
+	Outside = function(View, Entity, Data)
+		if not View:IsInRange(Entity) then return end
 
-		if self:IsInRange(Entity) then
-			self.Outside[Entity] = nil
+		local CanSee, Bone = View:CanSee(Entity)
 
-			local CanSee, Index = self:CanSee(Entity)
+		if CanSee then
+			Data.State   = "Spotted"
+			Data.Bone    = Bone
+			Data.Watcher = View.Watcher
 
-			if CanSee then
-				self:AddSpotted(Entity, Index)
-				self:ReportSight(Entity, Index)
-			else
-				self:AddUnseen(Entity)
-			end
-		end
-
-		Checked[Entity] = true
-	end
-end
-
-function ENT:CheckUnseen(Checked)
-	for Entity in pairs(self.Unseen) do
-		if Checked[Entity] then continue end
-
-		if not self:IsInRange(Entity) then
-			self.Unseen[Entity] = nil
-
-			self:AddOutsider(Entity)
+			View.Squadron:OnGainedSight(Entity, Data)
 		else
-			local CanSee, Index = self:CanSee(Entity)
+			Data.State = "Outside"
+		end
+	end,
+	Unseen = function(View, Entity, Data)
+		if not View:IsInRange(Entity) then
+			Data.State = "Outside"
 
-			if CanSee then
-				self.Unseen[Entity] = nil
-
-				self:AddSpotted(Entity, Index)
-				self:ReportSight(Entity, Index)
-			end
+			return
 		end
 
-		Checked[Entity] = true
-	end
-end
+		local CanSee, Bone = View:CanSee(Entity)
 
-function ENT:CheckSpotted(Checked)
-	for Entity in pairs(self.Spotted) do
-		if Checked[Entity] then continue end
+		if CanSee then
+			Data.State   = "Spotted"
+			Data.Bone    = Bone
+			Data.Watcher = View.Watcher
 
-		if not self:IsInRange(Entity) then
-			self.Spotted[Entity] = nil
+			View.Squadron:OnGainedSight(Entity, Data)
+		end
+	end,
+	Spotted = function(View, Entity, Data)
+		local Squad = View.Squadron
 
-			self:AddOutsider(Entity)
-			self:ReportLostSight(Entity)
-		elseif not self:CanSee(Entity) then
-			self.Spotted[Entity] = nil
+		if not View:IsInRange(Entity) then
+			Data.State   = "Outside"
+			Data.Bone    = nil
+			Data.Watcher = nil
 
-			self:AddUnseen(Entity)
-			self:ReportLostSight(Entity)
+			Squad:OnLostSight(Entity, Data)
+
+			return
 		end
 
-		Checked[Entity] = true
+		local Watcher = IsValid(Data.Watcher) and Data.Watcher or View:GetNextWatcher()
+		local CanSee, Bone = View:CanSee(Entity, Watcher)
+
+		if CanSee then
+			-- NOTE: Watcher changes here, notify it
+
+			Data.Bone    = Bone
+			Data.Watcher = Watcher
+		else
+			Data.State   = "Unseen"
+			Data.Bone    = nil
+			Data.Watcher = nil
+
+			Squad:OnLostSight(Entity, Data)
+		end
+	end,
+}
+
+function ENT:Think()
+	for Entity, Data in pairs(self.Entities) do
+		local Check = Checks[Data.State]
+
+		Check(self, Entity, Data)
 	end
+
+	self:NextThink(Utils.CurTime + 0.1)
+
+	return true
 end
 
 function ENT:StartTouch(Entity)
 	if not Detection.IsDetectable(Entity) then return end
-	if self.Parent == Entity then return end
+	if not self.Squadron:IsFoe(Entity) then return end
 
-	if self:IsInRange(Entity) then
-		local CanSee, Index = self:CanSee(Entity)
+	local UID  = self.Squadron.UID
+	local Data = {}
 
-		if CanSee then
-			self:AddSpotted(Entity, Index)
-			self:ReportSight(Entity, Index)
-		else
-			self:AddUnseen(Entity)
-		end
-	else
-		self:AddOutsider(Entity)
+	Checks.Outside(self, Entity, Data)
+
+	if not Data.State then
+		Data.State = "Outside"
 	end
+
+	self.Entities[Entity] = Data
+
+	Entity:CallOnRemove("CAI Squad Sight " .. UID, OnEntityRemoved, self)
 end
 
 function ENT:Touch(Entity)
-	if not self.Check[Entity] then return end
+	local Death = self.Check[Entity]
 
-	if self:IsInRange(Entity) then
-		local CanSee, Index = self:CanSee(Entity)
+	if not Death then return end
+	if Death < Utils.CurTime then
+		local Data = {}
 
-		if CanSee then
-			self:AddSpotted(Entity, Index)
-			self:ReportSight(Entity, Index)
-		else
-			self:AddUnseen(Entity)
+		Checks.Outside(self, Entity, Data)
+
+		if not Data.State then
+			Data.State = "Outside"
 		end
-	else
-		self:AddOutsider(Entity)
+
+		self.Entities[Entity] = Data
 	end
 
 	self.Check[Entity] = nil
@@ -259,21 +273,18 @@ function ENT:EndTouch(Entity)
 	self:IgnoreEntity(Entity)
 end
 
-function ENT:Think()
-	local Checked = {}
-	local Time    = Utils.CurTime
+function ENT:OnRemove()
+	local Name = "CAI Squad Sight " .. self.Squadron.UID
 
-	for Entity, Limit in pairs(self.Check) do
-		if Time >= Limit then
-			self.Check[Entity] = nil
-		end
+	for Entity in pairs(self.Check) do
+		Entity:RemoveCallOnRemove(Name)
+
+		self.Check[Entity] = nil
 	end
 
-	self:CheckOutsiders(Checked)
-	self:CheckUnseen(Checked)
-	self:CheckSpotted(Checked)
+	for Entity in pairs(self.Entities) do
+		Entity:RemoveCallOnRemove(Name)
 
-	self:NextThink(Time + 0.1)
-
-	return true
+		self.Entities[Entity] = nil
+	end
 end
