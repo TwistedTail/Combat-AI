@@ -3,7 +3,7 @@ local Paths    = CAI.Paths
 local Utils    = CAI.Utilities
 local Requests = Paths.Requests
 
-function Paths.Request(Requester, Grid, Start, Goal, Type)
+function Paths.Request(Requester, Grid, Start, Goal, UseLocked, Type)
 	if not IsValid(Requester) then return end
 	if not isstring(Grid) then return end
 	if not isvector(Start) then return end
@@ -11,7 +11,7 @@ function Paths.Request(Requester, Grid, Start, Goal, Type)
 
 	local UID = Utils.GetUID(Requester.UID)
 
-	if not CNode.QueuePath(Grid, UID, Start, Goal) then
+	if not CNode.QueuePath(Grid, UID, Start, Goal, UseLocked) then
 		return print("Couldn't request path.")
 	end
 

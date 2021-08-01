@@ -44,7 +44,7 @@ function TOOL:RightClick(Trace)
 
 	if not CNode.HasGrid(self.GridName, HitPos) then return false end
 
-	self.Selected:RequestPath(HitPos, "Full")
+	self.Selected:RequestPath(HitPos, true, "Route")
 
 	return true
 end

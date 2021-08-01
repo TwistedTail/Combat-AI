@@ -8,47 +8,7 @@ WEAPON.FireSound  = "weapons/ump45/ump45-1.wav"
 WEAPON.FireRate   = 600 -- shots per minute
 WEAPON.Spread     = 0.01
 WEAPON.ReloadTime = 4
-
-WEAPON.Sequences = {
-	idle_calm = {
-		"Idle_Relaxed_AR2_1",
-		"Idle_Relaxed_AR2_2",
-		"Idle_Relaxed_AR2_3",
-		"Idle_Relaxed_AR2_4",
-		"Idle_Relaxed_AR2_5",
-		"Idle_Relaxed_AR2_6",
-		"Idle_Relaxed_AR2_7",
-		"Idle_Relaxed_AR2_8",
-		"Idle_Relaxed_AR2_9"
-	},
-	idle_alert = {
-		"Idle_Alert_AR2_1",
-		"Idle_Alert_AR2_2",
-		"Idle_Alert_AR2_3",
-		"Idle_Alert_AR2_4",
-		"Idle_Alert_AR2_5",
-		"Idle_Alert_AR2_6",
-		"Idle_Alert_AR2_7",
-		"Idle_Alert_AR2_8",
-		"Idle_Alert_AR2_9"
-	},
-	idle_combat     = "idle_angry_Ar2",
-	idle_crouch     = "Crouch_idleD",
-	walk_calm       = "walk_AR2_Relaxed_all",
-	walk_alert      = "walkHOLDALL1_ar2",
-	walk_combat     = "walkAlertHOLD_AR2_ALL1",
-	walk_crouch     = "Crouch_walk_holding_all",
-	run_calm        = "run_AR2_Relaxed_all",
-	run_alert       = "run_holding_ar2_all",
-	run_combat      = "run_alert_holding_ar2_all",
-	run_crouch      = "crouchRUNHOLDINGALL1",
-	aim_idle        = "idle_ar2_aim",
-	aim_walk        = "walkAIMALL1_ar2",
-	aim_run         = "run_aiming_ar2_all",
-	aim_idle_crouch = "crouch_aim_smg1",
-	aim_walk_crouch = "Crouch_walk_aiming_all",
-	aim_run_crouch  = "crouchRUNAIMINGALL1",
-}
+WEAPON.HoldType   = "ar2"
 
 function WEAPON:Initialize()
 	self.FireDelay = 1 / (self.FireRate / 60)
