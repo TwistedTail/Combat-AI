@@ -3,7 +3,7 @@ AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
--- Note: OnEntitySight and OnEntityLostSight don't work with players and non-nextbot NPCs
+-- NOTE: OnEntitySight and OnEntityLostSight don't work with players and non-nextbot NPCs
 
 local util     = util
 local CNode    = CNode
@@ -89,8 +89,6 @@ function ENT:Initialize()
 	self.Grid      = CNode.GetGrid(self.GridName)
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
 	self.Filter    = { self }
-	self.Sequences = {}
-	self.Waypoints = {}
 	self.Targets   = {}
 	self.MaxSpeed  = self.RunSpeed
 	self.Accel     = self.RunAccel
@@ -324,24 +322,6 @@ do -- Squadron functions and hooks
 		local New  = Squads.Create(Name)
 
 		New:AddMember(self)
-	end
-
-	function ENT:HasRelation(Entity)
-		if not self.Squadron then return end
-
-		return self.Squadron:HasRelation(Entity)
-	end
-
-	function ENT:GetRelation(Entity)
-		if not self.Squadron then return end
-
-		return self.Squadron:GetRelation(Entity)
-	end
-
-	function ENT:ForgetRelation(Entity)
-		if not self.Squadron then return end
-
-		return self.Squadron:ForgetRelation(Entity)
 	end
 
 	function ENT:LeaveSquad()
@@ -737,28 +717,9 @@ do -- NextBot hooks
 		print(self, "OnExtinguished")
 	end
 
-	-- Broken, June 2021 update seems to have capped MaxViewRange to 320 units
-	--[[
-	function ENT:OnEntitySight(Entity)
-		if Entity:IsPlayer() then return end -- Ignore players, broken
-
-		if not self:HasRelation(Entity) then
-			self:GetRelation(Entity)
-		end
-
-		print(self, "OnEntitySight", Entity)
-	end
-
-	function ENT:OnEntitySightLost(Entity)
-		if Entity:IsPlayer() then return end -- Ignore players, broken
-
-		print(self, "OnEntitySightLost", Entity)
-	end
-	]]
-
 	function ENT:OnOtherKilled(Entity)
 		if self.IsLeader then
-			self:ForgetRelation(Entity)
+			self.Squadron:ForgetRelation(Entity)
 		end
 
 		print(self, "OnOtherKilled", Entity)
@@ -773,6 +734,10 @@ do -- NextBot hooks
 
 		if self.OnFire then
 			self:SetModel("models/player/charple.mdl")
+		end
+
+		if self.OnGrid then
+			CNode.UnlockNode(self.GridName, self.Position) -- NOTE: Might want to check the coordinates before unlocking a node
 		end
 
 		self:OnRemoved()
