@@ -2,6 +2,7 @@ local CNode    = CNode
 local Paths    = CAI.Paths
 local Utils    = CAI.Utilities
 local Requests = Paths.Requests
+local Format   = "%s-%s"
 
 function Paths.Request(Requester, Grid, Start, Goal, UseLocked, Type)
 	if not IsValid(Requester) then return end
@@ -9,7 +10,8 @@ function Paths.Request(Requester, Grid, Start, Goal, UseLocked, Type)
 	if not isvector(Start) then return end
 	if not isvector(Goal) then return end
 
-	local UID = Utils.GetUID(Requester.UID)
+	local Name = string.format(Format, Requester.UID, Type or "Unknown")
+	local UID = Utils.GetUID(Name)
 
 	if not CNode.QueuePath(Grid, UID, Start, Goal, UseLocked) then
 		return print("Couldn't request path.")
