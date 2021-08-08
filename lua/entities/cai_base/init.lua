@@ -373,12 +373,14 @@ do -- Waypoint and path functions
 	-- Return: Between current position and closest grid position
 	-- Cover: Between the current position and the closest hide spot
 	function ENT:RequestPath(Goal, UseLocked, Type)
+		if NoBrain:GetBool() then return end
 		if not isvector(Goal) then return end
 
 		Paths.Request(self, self.GridName, self.Position, Goal, UseLocked, Type)
 	end
 
 	function ENT:ReceivePath(Path, Type)
+		if NoBrain:GetBool() then return end
 		if not Type then return end
 
 		local Data = self.Paths[Type]
@@ -634,7 +636,7 @@ do -- Movement functions
 		return Result
 	end
 
-	function ENT:MoveToDestiny()
+	function ENT:MoveInPath()
 		if self.Halted then return self:SetMovement("Idle") end
 
 		local Waypoint = self:GetWaypoint()
@@ -656,10 +658,14 @@ end
 do -- NextBot hooks
 	function ENT:RunBehaviour()
 		while true do
-			if not NoBrain:GetBool() then
+			if NoBrain:GetBool() then
+				self:SetEmotion("Calm")
+				self:SetMovement("Idle")
+				self:SetStance("Normal")
+			else
 				self.MaxMove = self.MaxSpeed * Tick
 
-				self:MoveToDestiny()
+				self:MoveInPath()
 			end
 
 			coroutine.yield()
