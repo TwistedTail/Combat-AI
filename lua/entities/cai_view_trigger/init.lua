@@ -49,7 +49,7 @@ function CAI.CreateViewTrigger(Squadron, Radius)
 	Trigger.Squadron = Squadron
 	Trigger.Leader   = Leader
 	Trigger.Members  = Squadron.Members
-	Trigger.Filter   = { Trigger }
+	Trigger.Filter   = {}
 	Trigger.Entities = {}
 	Trigger.Check    = {}
 

@@ -15,4 +15,5 @@ function ENT:Think()
 
 	self.Position = self:GetPos()
 	self.ShootPos = Eyes.Pos
+	self.ShootDir = Eyes.Ang:Forward()
 end

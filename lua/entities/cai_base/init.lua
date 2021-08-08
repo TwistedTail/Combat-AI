@@ -678,6 +678,7 @@ do -- NextBot hooks
 		local Weapon = self.Weapon
 
 		self.ShootPos = Eyes.Pos
+		self.ShootDir = Eyes.Ang:Forward()
 
 		self:UpdatePosition()
 
