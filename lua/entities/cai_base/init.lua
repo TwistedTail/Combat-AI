@@ -120,10 +120,10 @@ ENT.HoldTypes = {
 }
 
 function ENT:Initialize()
-	self:SetModel("models/humans/group03/male_09.mdl")
 	self:SetMaxHealth(self.MaxHealth)
 	self:SetHealth(self.MaxHealth)
 	self:AddFlags(FL_OBJECT)
+	self:SetupModel()
 
 	self.Grid      = CNode.GetGrid(self.GridName)
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
@@ -148,6 +148,10 @@ function ENT:OnRemove()
 	end
 
 	self:OnRemoved()
+end
+
+function ENT:SetupModel()
+	self:SetModel("models/humans/group03/male_09.mdl")
 end
 
 function ENT:OnInitialized()
