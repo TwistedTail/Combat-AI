@@ -25,12 +25,51 @@ ENT.WalkAccel    = 400 -- Temp
 ENT.RunSpeed     = 400 -- Temp
 ENT.RunAccel     = 800 -- Temp
 
-ENT.DefaultHoldType = "ar2" -- TODO: Change to none
+ENT.DefaultHoldType = "normal"
 ENT.DefaultEmotion  = "Calm"
 ENT.DefaultMovement = "Idle"
 ENT.DefaultStance   = "Normal"
 
+ENT.MoveTypes = {
+	Idle = {
+		MaxSpeed     = 0,
+		Acceleration = 0,
+	},
+	Walk = {
+		MaxSpeed     = 200,
+		Acceleration = 400,
+	},
+	Run = {
+		MaxSpeed     = 400,
+		Acceleration = 800,
+	},
+}
+
 ENT.HoldTypes = {
+	normal = {
+		Calm = {
+			Idle = {
+				Normal = {
+					"idle_subtle",
+					"idle_angry",
+					"LineIdle01",
+					"LineIdle03",
+				},
+				Crouch = "Crouch_idleD", -- NOTE: Look for a better one.
+			},
+			Walk = {
+				Normal = {
+					"walk_all_Moderate",
+					"walk_all",
+				},
+				Crouch = "Crouch_walk_all",
+			},
+			Run = {
+				Normal = "run_all", -- NOTE: sprint_all was too exaggerated in my opinion
+				Crouch = "CrouchRUNALL1",
+			},
+		},
+	},
 	ar2 = {
 		Calm = {
 			Idle = {
@@ -90,8 +129,6 @@ function ENT:Initialize()
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
 	self.Filter    = { self }
 	self.Targets   = {}
-	self.MaxSpeed  = self.RunSpeed
-	self.Accel     = self.RunAccel
 	self.EyesIndex = self:LookupAttachment("eyes")
 
 	self.Paths = {
@@ -100,6 +137,7 @@ function ENT:Initialize()
 		Sector   = { Entries = {}, Receiver = self.SetSectorPath },
 	}
 
+	self:SetHoldType("normal") -- Initializing sequences and movement speed
 	self:UpdatePosition()
 	self:OnInitialized()
 end
@@ -260,8 +298,13 @@ do -- Sequence functions
 			if not Data then return end
 			if Data == self.MoveData then return end
 
+			local Types = self.MoveTypes
+			local Move  = Types[Movement] or Types.Idle
+
 			self.Movement = Movement
 			self.MoveData = Data
+			self.MaxSpeed = Move.MaxSpeed
+			self.Accel    = Move.Acceleration
 		end
 
 		return self:UpdateSequence(3)
@@ -643,10 +686,11 @@ do -- Movement functions
 
 		if not Waypoint then return self:SetMovement("Idle") end
 
+		self:SetMovement("Run")
+
 		while Waypoint and self.MaxMove > 0 do
 			local Position = self:MoveTowards(Waypoint.Position)
 
-			self:SetMovement("Run")
 			self:UpdateWaypoint(Waypoint)
 			self:UpdatePosition(Position)
 
