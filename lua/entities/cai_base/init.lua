@@ -392,6 +392,58 @@ do -- Squadron functions and hooks
 	end
 end
 
+do -- Visibility functions
+	local Trace = { start = true, endpos = true, filter = true, mask = MASK_BLOCKLOS }
+	local Bones = {
+		"ValveBiped.Bip01_Head1",
+		"ValveBiped.Bip01_Spine4",
+		"ValveBiped.Bip01_Spine2",
+		"ValveBiped.Bip01_Pelvis",
+	}
+
+	local function CanSeePos(Entity, Position)
+		Trace.endpos = Position
+
+		local Result = util.TraceLine(Trace)
+
+		return Result.Entity == Entity or not Result.Hit, Result
+	end
+
+	function ENT:CanSee(Target)
+		if not IsValid(Target) then return end
+		if not self:TestPVS(Target) then return end
+
+		Trace.start  = self:GetShootPos()
+		Trace.filter = self.Filter
+
+		for I = 1, #Bones do
+			local Index = Target:LookupBone(Bones[I])
+
+			if not Index then continue end
+
+			local Hit, Result = CanSeePos(Target, Target:GetBonePosition(Index))
+
+			if Hit then return true, Result end
+		end
+
+		local Hit, Result = CanSeePos(Target, Target:EyePos())
+
+		if Hit then return true, Result end
+	end
+
+	function ENT:CanSeePos(Target)
+		if not isvector(Target) then return end
+		if not self:TestPVS(Target) then return end
+
+		Trace.start  = self:GetShootPos()
+		Trace.filter = self.Filter
+
+		local Hit, Result = CanSeePos(nil, Target)
+
+		if Hit then return true, Result end
+	end
+end
+
 do -- Get/Set Target
 	function ENT:SetTarget(Entity)
 		if not IsValid(Entity) then return false end
