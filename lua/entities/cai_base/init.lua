@@ -643,7 +643,7 @@ do -- Aim pose functions. NOTE: These seem to require a specific sequence/activi
 	function ENT:UpdateAimPose()
 		if not self.AimPos then return end
 
-		local Direction = (self.AimPos - self.ShootPos):GetNormalized()
+		local Direction = (self.AimPos - self:GetShootPos()):GetNormalized()
 		local ViewAng   = self:WorldToLocalAngles(Direction:Angle())
 
 		ViewAng:Normalize()
@@ -670,7 +670,7 @@ do -- Head pose functions
 	function ENT:UpdateHeadPose()
 		if not self.LookPos then return end
 
-		local Direction = (self.LookPos - self.ShootPos):GetNormalized()
+		local Direction = (self.LookPos - self:GetShootPos()):GetNormalized()
 		local LookAng   = self:WorldToLocalAngles(Direction:Angle())
 
 		LookAng:Normalize()
@@ -756,6 +756,11 @@ do -- Movement functions
 end
 
 do -- NextBot hooks
+	-- NOTE: BodyMoveXY doesn't seem to work at all for us
+	function ENT:BodyUpdate()
+		self:FrameAdvance()
+	end
+
 	function ENT:RunBehaviour()
 		while true do
 			if NoBrain:GetBool() then
