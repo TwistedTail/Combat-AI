@@ -21,6 +21,8 @@ function Paths.Request(Requester, Grid, Start, Goal, UseLocked, Type)
 		Requester = Requester,
 		Type = Type
 	}
+
+	return true
 end
 
 hook.Add("Tick", "CAI Pathfinding Result", function()
@@ -29,7 +31,10 @@ hook.Add("Tick", "CAI Pathfinding Result", function()
 	if not Results then return end
 
 	for UID, Path in pairs(Results) do
-		local Data      = Requests[UID]
+		local Data = Requests[UID]
+
+		if not Data then print("no data for path", UID) continue end
+
 		local Requester = Data.Requester
 
 		if IsValid(Requester) then

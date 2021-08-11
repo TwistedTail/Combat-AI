@@ -5,6 +5,7 @@ include("shared.lua")
 
 -- NOTE: OnEntitySight and OnEntityLostSight don't work with players and non-nextbot NPCs
 
+local math     = math
 local util     = util
 local CNode    = CNode
 local isvector = isvector
@@ -14,16 +15,17 @@ local Globals  = CAI.Globals
 local Tick     = 0.105 -- Nextbot tickrate, can it be changed?
 local NoBrain  = GetConVar("ai_disabled")
 
-ENT.GridName     = "human" -- Name of the grid used by the bot
-ENT.MaxHealth    = 100
-ENT.MaxViewRange = 7500
-ENT.FieldOfView  = 120
-ENT.MinApproach  = 2500
-ENT.JumpOffset   = Vector(0, 0, Globals.MaxJump)
-ENT.WalkSpeed    = 200 -- Temp
-ENT.WalkAccel    = 400 -- Temp
-ENT.RunSpeed     = 400 -- Temp
-ENT.RunAccel     = 800 -- Temp
+ENT.GridName       = "human" -- Name of the grid used by the bot
+ENT.MaxHealth      = 100
+ENT.MaxViewRange   = 7500
+ENT.FieldOfView    = 120
+ENT.MinApproach    = 2500
+ENT.MaxHideRange   = 750 -- Maximum range of nodes that can be used to hide
+ENT.HideAttempts   = 25 -- Amount of nodes will attempt to use to hide
+ENT.MaxReturn      = 100
+ENT.JumpOffset     = Vector(0, 0, Globals.MaxJump)
+ENT.EyeLevel       = Vector(0, 0, 64)
+ENT.CrouchEyeLevel = Vector(0, 0, 28)
 
 ENT.DefaultHoldType = "normal"
 ENT.DefaultEmotion  = "Calm"
@@ -131,10 +133,17 @@ function ENT:Initialize()
 	self.Targets   = {}
 	self.EyesIndex = self:LookupAttachment("eyes")
 
+	-- Types of path:
+	--> Route: Between current position and any destination on the grid
+	--> Approach: Between current position and the closest waypoint of the route path
+	--> Sector: Between current position and next waypoint
+	--> Return: Between current position and closest grid position
+	--> Cover: Between the current position and the closest cover spot
 	self.Paths = {
-		Route    = { Entries = {}, Receiver = self.SetRoutePath },
-		Approach = { Entries = {}, Receiver = self.SetApproachPath },
+		Route    = { Entries = {}, OnRequest = self.OnRequestRoute, Receiver = self.SetRoutePath, Finish = self.OnFinishRoute },
+		Approach = { Entries = {}, OnRequest = self.OnRequestApproach, Receiver = self.SetApproachPath, Finish = self.OnFinishedApproach },
 		Sector   = { Entries = {}, Receiver = self.SetSectorPath },
+		Cover    = { Entries = {}, Receiver = self.SetCoverPath },
 	}
 
 	self:SetHoldType("normal") -- Initializing sequences and movement speed
@@ -166,6 +175,97 @@ function ENT:OnRemoved()
 
 	if Weapon then
 		Weapon:Remove()
+	end
+end
+
+do -- Hiding and cover spot functions
+	local table     = table
+	local Detection = CAI.Detection
+	local Trace     = { start = true, endpos = true, filter = true, mask = MASK_BLOCKLOS }
+
+	local function CheckSpot(Node, Offset)
+		Trace.endpos = Node.FootPos + Offset
+
+		local Result = util.TraceLine(Trace)
+
+		return Result.Hit
+	end
+
+	function ENT:FindHidingSpot(ThreatPos)
+		if not self.OnGrid then return end
+		if not isvector(ThreatPos) then return end
+
+		local Nodes = CNode.GetHidingSpotsInRadius(self.GridName, self.Position, ThreatPos, self.MaxHideRange)
+
+		if not Nodes then print("No hiding nodes") return end
+
+		local Position = self.Position
+		local Closest  = math.huge
+		local Result
+
+		Trace.start  = ThreatPos
+		Trace.filter = Detection.GetEntityList()
+
+		for _ = 1, self.HideAttempts do
+			local Index    = math.random(#Nodes)
+			local Node     = table.remove(Nodes, Index)
+			local Distance = Position:DistToSqr(Node.FootPos)
+
+			if Distance > Closest then continue end
+			if not CheckSpot(Node, self.CrouchEyeLevel) then continue end -- Visible when crouching
+
+			Closest = Distance
+			Result  = Node
+
+			if not CheckSpot(Result, self.EyeLevel) then
+				Result.Crouch = true
+			end
+		end
+
+		return Result
+	end
+
+	function ENT:FindCoverSpot(ThreatPos)
+		if not self.OnGrid then return end
+		if not isvector(ThreatPos) then return end
+
+		local Nodes = CNode.GetHidingSpotsInRadius(self.GridName, self.Position, ThreatPos, self.MaxHideRange)
+
+		if not Nodes then print("No cover nodes") return end
+
+		local Position = self.Position
+		local Closest  = math.huge
+		local Result
+
+		Trace.start  = ThreatPos
+		Trace.filter = Detection.GetEntityList()
+
+		for _ = 1, self.HideAttempts do
+			local Index    = math.random(#Nodes)
+			local Node     = table.remove(Nodes, Index)
+			local Distance = Position:DistToSqr(Node.FootPos)
+
+			if Distance > Closest then continue end
+			if not CheckSpot(Node, self.CrouchEyeLevel) then continue end -- Visible when crouching
+			if CheckSpot(Node, self.EyeLevel) then continue end
+
+			Closest = Distance
+			Result  = Node
+		end
+
+		return Result
+	end
+
+	-- TODO: If recently threatened, use the threat positions instead
+	function ENT:WaitInCover()
+		local Origin = self.Destination or self.Position
+		local Node   = self:FindCoverSpot(Origin)
+
+		if not Node then
+			return self:SetStance("Crouch")
+		end
+
+		self:RequestPath(Node.FootPos, true, "Cover")
 	end
 end
 
@@ -224,7 +324,9 @@ do -- World and grid position functions
 
 				CNode.UnlockNode(Grid, LastPos) -- NOTE: Might want to check the coordinates before unlocking a node
 
-				self:OnLeftGrid(Current)
+				if self.OnLeftGrid then
+					self:OnLeftGrid(Current)
+				end
 			else
 				local New = CNode.GetCoordinates(Grid, Position)
 
@@ -235,7 +337,9 @@ do -- World and grid position functions
 				CNode.UnlockNode(Grid, LastPos) -- NOTE: Might want to check the coordinates before unlocking a node
 				CNode.LockNode(Grid, Position)
 
-				self:OnChangedCoords(Current, New)
+				if self.OnChangedCoords then
+					self:OnChangedCoords(Current, New)
+				end
 			end
 		elseif OnGrid then
 			local New = CNode.GetCoordinates(Grid, Position)
@@ -245,10 +349,13 @@ do -- World and grid position functions
 
 			CNode.LockNode(Grid, Position)
 
-			self:OnEnteredGrid(New)
+			if self.OnEnteredGrid then
+				self:OnEnteredGrid(New)
+			end
 		end
 	end
 
+	--[[
 	function ENT:OnEnteredGrid(Coordinates)
 		print(self, "OnEnteredGrid", Coordinates)
 	end
@@ -260,6 +367,7 @@ do -- World and grid position functions
 	function ENT:OnLeftGrid(Coordinates)
 		print(self, "OnLeftGrid", Coordinates)
 	end
+	]]
 end
 
 do -- Sequence functions
@@ -465,17 +573,34 @@ end
 do -- Waypoint and path functions
 	local Paths = CAI.Paths
 
-	-- Types:
-	-- Route: Between current position and any destination on the grid
-	-- Approach: Between current position and the closest waypoint of the route path
-	-- Sector: Between current position and next waypoint
-	-- Return: Between current position and closest grid position
-	-- Cover: Between the current position and the closest hide spot
+	local function PopulateEntries(Grid, Entries, Path)
+		local GetCoords = CNode.GetCoordinates
+
+		for I = 1, #Path do
+			local Position = Path[I]
+
+			Entries[I] = {
+				Coordinates = GetCoords(Grid, Position),
+				Position = Position,
+			}
+		end
+	end
+
 	function ENT:RequestPath(Goal, UseLocked, Type)
 		if NoBrain:GetBool() then return end
 		if not isvector(Goal) then return end
 
-		Paths.Request(self, self.GridName, self.Position, Goal, UseLocked, Type)
+		if not Paths.Request(self, self.GridName, self.Position, Goal, UseLocked, Type) then
+			return print(self, "Couldn't request path")
+		end
+
+		if not Type then return end
+
+		local Data = self.Paths[Type]
+
+		if Data and Data.OnRequest then
+			Data.OnRequest(self, Goal, UseLocked)
+		end
 	end
 
 	function ENT:ReceivePath(Path, Type)
@@ -484,7 +609,7 @@ do -- Waypoint and path functions
 
 		local Data = self.Paths[Type]
 
-		if Data then
+		if Data and Data.Receiver then
 			Data.Receiver(self, Path)
 		end
 	end
@@ -511,6 +636,14 @@ do -- Waypoint and path functions
 		end
 	end
 
+	function ENT:OnRequestRoute()
+		self:WaitInCover()
+	end
+
+	function ENT:OnRequestApproach()
+		self:WaitInCover()
+	end
+
 	function ENT:SetRoutePath(Path)
 		if not istable(Path) then return end
 
@@ -521,17 +654,9 @@ do -- Waypoint and path functions
 		if not First then return print("Got empty route path") end -- NOTE: Maybe tell it to hide?
 
 		local Entries = self.Paths.Route.Entries
-		local Grid    = self.GridName
 		local Type
 
-		for I = 1, #Path do
-			local Position = Path[I]
-
-			Entries[I] = {
-				Coordinates = CNode.GetCoordinates(Grid, Position),
-				Position = Position,
-			}
-		end
+		PopulateEntries(self.GridName, Entries, Path)
 
 		if self.IsLeader then
 			Type = "Sector"
@@ -542,13 +667,10 @@ do -- Waypoint and path functions
 			Type = Distance < Limit and "Sector" or "Approach"
 		end
 
+		self.Destination = Path[#Path]
 		self.CurrentPath = "Route"
 
 		self:RequestPath(First, Type == "Sector", Type)
-
-		if Type ~= "Sector" then
-			-- TODO: Tell the bot to look for a hiding spot in the meantime
-		end
 	end
 
 	function ENT:SetApproachPath(Path)
@@ -556,21 +678,13 @@ do -- Waypoint and path functions
 
 		local First = Path[1]
 
-		self:ResetPaths("Approach", "Sector")
+		self:ResetPaths("Approach", "Sector", "Cover")
 
 		if not First then return print("Got empty approach path") end -- NOTE: What now?
 
 		local Entries = self.Paths.Approach.Entries
-		local Grid    = self.GridName
 
-		for I = 1, #Path do
-			local Position = Path[I]
-
-			Entries[I] = {
-				Coordinates = CNode.GetCoordinates(Grid, Position),
-				Position = Position,
-			}
-		end
+		PopulateEntries(self.GridName, Entries, Path)
 
 		self.CurrentPath = "Approach"
 
@@ -579,24 +693,30 @@ do -- Waypoint and path functions
 
 	function ENT:SetSectorPath(Path)
 		if not istable(Path) then return end
-
-		local First = Path[1]
-
-		if not First then return print("Got empty sector path") end -- NOTE: What now?
+		if not next(Path) then return print("Got empty sector path") end -- NOTE: What now?
 
 		local Entries = self.Paths.Sector.Entries
-		local Grid    = self.GridName
 
 		self:ResetPaths("Sector")
 
-		for I = 1, #Path do
-			local Position = Path[I]
+		PopulateEntries(self.GridName, Entries, Path)
+	end
 
-			Entries[I] = {
-				Coordinates = CNode.GetCoordinates(Grid, Position),
-				Position = Position,
-			}
-		end
+	function ENT:SetCoverPath(Path)
+		if not istable(Path) then return end
+		if not next(Path) then return print("Got empty cover path") end -- NOTE: What now?
+
+		local Data    = self.Paths.Cover
+		local Entries = Data.Entries
+
+		self:ResetPaths("Cover", "Sector")
+
+		PopulateEntries(self.GridName, Entries, Path)
+
+		Data.Previous    = self.CurrentPath
+		self.CurrentPath = "Cover"
+
+		self:RequestPath(Path[1], false, "Sector")
 	end
 
 	function ENT:GetWaypoint()
@@ -635,7 +755,27 @@ do -- Waypoint and path functions
 	end
 
 	function ENT:OnReachedDestiny(PathName, Position, Coordinates)
-		print(self, "OnReachedDestiny", PathName, Position, Coordinates)
+		if NoBrain:GetBool() then return end
+
+		local Data = self.Paths[PathName]
+
+		if Data and Data.Finish then
+			Data.Finish(self, Position, Coordinates)
+		end
+	end
+
+	function ENT:OnFinishedRoute()
+		self.Destination = nil
+
+		self:WaitInCover()
+	end
+
+	function ENT:OnFinishedApproach()
+		local Route = self.Paths.Route.Entries
+
+		if not next(Route) then return end -- NOTE: Maybe hide?
+
+		self.CurrentPath = "Route"
 	end
 end
 
