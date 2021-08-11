@@ -12,6 +12,19 @@ function Detection.GetEntities()
 	return Result
 end
 
+function Detection.GetEntityList()
+	local Result = {}
+	local Count  = 0
+
+	for Entity in pairs(Entities) do
+		Count = Count + 1
+
+		Result[Count] = Entity
+	end
+
+	return Result
+end
+
 function Detection.IsDetectable(Entity)
 	if not IsValid(Entity) then return false end
 
