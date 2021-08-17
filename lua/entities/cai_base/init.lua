@@ -32,94 +32,10 @@ ENT.DefaultEmotion  = "Calm"
 ENT.DefaultMovement = "Idle"
 ENT.DefaultStance   = "Normal"
 
-ENT.MoveTypes = {
-	Idle = {
-		MaxSpeed     = 0,
-		Acceleration = 0,
-	},
-	Walk = {
-		MaxSpeed     = 200,
-		Acceleration = 400,
-	},
-	Run = {
-		MaxSpeed     = 400,
-		Acceleration = 800,
-	},
-}
-
-ENT.HoldTypes = {
-	normal = {
-		Calm = {
-			Idle = {
-				Normal = {
-					"idle_subtle",
-					"idle_angry",
-					"LineIdle01",
-					"LineIdle03",
-				},
-				Crouch = "Crouch_idleD", -- NOTE: Look for a better one.
-			},
-			Walk = {
-				Normal = {
-					"walk_all_Moderate",
-					"walk_all",
-				},
-				Crouch = "Crouch_walk_all",
-			},
-			Run = {
-				Normal = "run_all", -- NOTE: sprint_all was too exaggerated in my opinion
-				Crouch = "CrouchRUNALL1",
-			},
-		},
-	},
-	ar2 = {
-		Calm = {
-			Idle = {
-				Normal = {
-					"Idle_Alert_AR2_1",
-					"Idle_Alert_AR2_2",
-					"Idle_Alert_AR2_3",
-					"Idle_Alert_AR2_4",
-					"Idle_Alert_AR2_5",
-					"Idle_Alert_AR2_6",
-					"Idle_Alert_AR2_7",
-					"Idle_Alert_AR2_8",
-					"Idle_Alert_AR2_9",
-					"idle_angry_Ar2",
-				},
-				Crouch = "Crouch_idleD",
-			},
-			Walk = {
-				Normal = {
-					"walkHOLDALL1_ar2",
-					"walkAlertHOLD_AR2_ALL1",
-				},
-				Crouch = "Crouch_walk_holding_all",
-			},
-			Run = {
-				Normal = {
-					"run_holding_ar2_all",
-					"run_alert_holding_ar2_all",
-				},
-				Crouch = "crouchRUNHOLDINGALL1",
-			},
-		},
-		Combat = {
-			Idle = {
-				Normal = "idle_ar2_aim",
-				Crouch = "crouch_aim_smg1",
-			},
-			Walk = {
-				Normal = "walkAIMALL1_ar2",
-				Crouch = "Crouch_walk_aiming_all",
-			},
-			Run = {
-				Normal = "run_aiming_ar2_all",
-				Crouch = "crouchRUNAIMINGALL1",
-			},
-		},
-	}
-}
+ENT.MoveTypes  = {}
+ENT.HoldTypes  = {}
+ENT.Sounds     = {}
+ENT.SoundDelay = 1.5 -- From 0.5 to this value, random sound cooldown timer
 
 function ENT:Initialize()
 	self:SetMaxHealth(self.MaxHealth)
@@ -127,7 +43,6 @@ function ENT:Initialize()
 	self:AddFlags(FL_OBJECT)
 	self:SetupModel()
 
-	self.Grid      = CNode.GetGrid(self.GridName)
 	self.UID       = Utils.GetUID(self.GridName .. self:EntIndex())
 	self.Filter    = { self }
 	self.Targets   = {}
@@ -148,35 +63,38 @@ function ENT:Initialize()
 
 	self:SetHoldType("normal") -- Initializing sequences and movement speed
 	self:UpdatePosition()
-	self:OnInitialized()
+	self:JoinOrCreateSquad()
+
+	if self.OnInitialized then
+		self:OnInitialized()
+	end
 end
 
-function ENT:OnRemove()
+function ENT:OnRemove(DamageInfo)
 	if self.OnGrid then
 		CNode.UnlockNode(self.GridName, self.Position) -- NOTE: Might want to check the coordinates before unlocking a node
 	end
 
-	self:OnRemoved()
+	self:LeaveSquad()
+
+	if self.OnRemoved then
+		self:OnRemoved(DamageInfo)
+	end
 end
 
 function ENT:SetupModel()
 	self:SetModel("models/humans/group03/male_09.mdl")
 end
 
+--[[
 function ENT:OnInitialized()
-	self:JoinOrCreateSquad()
-	self:GiveWeapon("rifle")
+	print(self, "OnInitialized")
 end
 
-function ENT:OnRemoved()
-	local Weapon = self.Weapon
-
-	self:LeaveSquad()
-
-	if Weapon then
-		Weapon:Remove()
-	end
+function ENT:OnRemoved(DamageInfo)
+	print(self, "OnRemoved", DamageInfo)
 end
+]]
 
 do -- Hiding and cover spot functions
 	local table     = table
@@ -269,39 +187,54 @@ do -- Hiding and cover spot functions
 	end
 end
 
-do -- Weaponry functions
-	local Weaponry = CAI.Weaponry
+do -- Sound functions
+	function ENT:HasSounds(Type)
+		if not Type then return false end
 
-	function ENT:GiveWeapon(Name)
-		if not isstring(Name) then return end
+		local Data = self.Sounds[Type]
 
-		local Weapon = Weaponry.Give(Name, self)
+		if not Data then return false end
+		if not next(Data) then return false end
 
-		if not Weapon then return end
-
-		self:SetHoldType(Weapon.HoldType)
-
-		self.Weapon = Weapon
-
-		return true
+		return true, Data
 	end
 
-	function ENT:Attack(Entity)
-		if not self.Weapon then return end
-		if not IsValid(Entity) then return end
+	function ENT:PlaySound(Type)
+		local HasSounds, Data = self:HasSounds(Type)
 
-		local Position = Entity:EyePos()
+		if not HasSounds then return end
+		if self.PlayingSound then return end
 
-		self.loco:FaceTowards(Position)
-		self.Weapon:Shoot(Position)
+		local Entry = Data[math.random(#Data)]
+		local Delay = math.random(0.5, self.SoundDelay)
+
+
+		self:EmitSound(Entry, SNDLVL_TALKING, 100, 1, CHAN_VOICE)
+
+		self.PlayingSound = Type
+		self.LastSound    = Entry
+		self.NextSound    = Utils.CurTime + SoundDuration(Entry) + Delay
 	end
 
-	function ENT:AttackPos(Position)
-		if not self.Weapon then return end
-		if not isvector(Position) then return end
+	function ENT:ForceSound(Type)
+		local HasSounds, Data = self:HasSounds(Type)
 
-		self.loco:FaceTowards(Position)
-		self.Weapon:Shoot(Position)
+		if not HasSounds then return end
+		if self.PlayingSound == Type then return end
+
+		local Entry = Data[math.random(#Data)]
+		local Last  = self.LastSound
+		local Delay = math.random(0.5, self.SoundDelay)
+
+		if Last then
+			self:StopSound(Last)
+		end
+
+		self:EmitSound(Entry, SNDLVL_TALKING, 100, 1, CHAN_VOICE)
+
+		self.PlayingSound = Type
+		self.LastSound    = Entry
+		self.NextSound    = Utils.CurTime + SoundDuration(Entry) + Delay
 	end
 end
 
@@ -810,11 +743,13 @@ do -- Head pose functions
 	function ENT:UpdateHeadPose()
 		if not self.LookPos then return end
 
-		local Direction = (self.LookPos - self:GetShootPos()):GetNormalized()
+		local Target    = self.LookPos
+		local Direction = (Target - self:GetShootPos()):GetNormalized()
 		local LookAng   = self:WorldToLocalAngles(Direction:Angle())
 
 		LookAng:Normalize()
 
+		self:SetEyeTarget(Target)
 		self:SetPoseParameter("head_pitch", LookAng.p)
 		self:SetPoseParameter("head_yaw", LookAng.y)
 	end
@@ -929,6 +864,12 @@ do -- NextBot hooks
 			self.Squadron.View:UpdatePos()
 		end
 
+		if self.PlayingSound and Utils.CurTime >= self.NextSound then
+			self.PlayingSound = nil
+			self.LastSound    = nil
+			self.NextSound    = nil
+		end
+
 		if self.OnFire then
 			if self:IsOnFire() then
 				self:OnBurned()
@@ -973,20 +914,15 @@ do -- NextBot hooks
 
 	function ENT:OnInjured(DamageInfo)
 		print(self, "OnInjured", DamageInfo:GetAttacker(), DamageInfo:GetInflictor())
+
+		self:ForceSound("Pain")
 	end
 
 	function ENT:OnKilled(DamageInfo)
 		hook.Run("OnNPCKilled", self, DamageInfo:GetAttacker(), DamageInfo:GetInflictor())
 
-		if self.OnFire then
-			self:SetModel("models/player/charple.mdl")
-		end
-
-		if self.OnGrid then
-			CNode.UnlockNode(self.GridName, self.Position) -- NOTE: Might want to check the coordinates before unlocking a node
-		end
-
-		self:OnRemoved()
+		self:ForceSound("Death")
+		self:OnRemove(DamageInfo)
 
 		local Ragdoll = self:BecomeRagdoll(DamageInfo)
 
