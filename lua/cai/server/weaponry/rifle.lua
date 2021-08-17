@@ -136,4 +136,6 @@ function WEAPON:Remove()
 	end
 
 	self.Prop = nil
+
+	Weaponry.Remove(self)
 end

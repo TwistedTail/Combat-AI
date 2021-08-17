@@ -918,9 +918,8 @@ do -- NextBot hooks
 	end
 
 	function ENT:Think()
-		local Eyes   = self:GetAttachment(self.EyesIndex)
+		local Eyes = self:GetAttachment(self.EyesIndex)
 		local View   = self.View
-		local Weapon = self.Weapon
 
 		self.ShootPos = Eyes.Pos
 		self.ShootDir = Eyes.Ang:Forward()
@@ -939,10 +938,6 @@ do -- NextBot hooks
 
 		if View then
 			View:UpdatePos()
-		end
-
-		if Weapon then
-			Weapon:Think()
 		end
 
 		self:UpdateHeadPose()

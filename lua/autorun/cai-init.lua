@@ -10,7 +10,7 @@ if not CAI then
 		Paths      = { Requests = {}, },
 		Squadrons  = { Objects = {}, },
 		Utilities  = {},
-		Weaponry   = { Objects = {}, }
+		Weaponry   = { Weapons = {}, Objects = {}, }
 	}
 end
 
