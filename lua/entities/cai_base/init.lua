@@ -919,12 +919,15 @@ do -- NextBot hooks
 
 	function ENT:Think()
 		local Eyes = self:GetAttachment(self.EyesIndex)
-		local View   = self.View
 
 		self.ShootPos = Eyes.Pos
 		self.ShootDir = Eyes.Ang:Forward()
 
 		self:UpdatePosition()
+
+		if self.IsLeader then
+			self.Squadron.View:UpdatePos()
+		end
 
 		if self.OnFire then
 			if self:IsOnFire() then
@@ -934,10 +937,6 @@ do -- NextBot hooks
 
 				self:OnExtinguished()
 			end
-		end
-
-		if View then
-			View:UpdatePos()
 		end
 
 		self:UpdateHeadPose()
